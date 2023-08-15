@@ -1,0 +1,13 @@
+{
+  "name": "sig-test",
+  "version": "1.0.0",
+  "main": "index.tsx",
+  "license": "MIT",
+  "dependencies": {
+    "crypto": "^1.0.1",
+    "elliptic": "^6.5.4"
+  },
+  "devDependencies": {
+    "@types/elliptic": "^6.4.14"
+  }
+}
