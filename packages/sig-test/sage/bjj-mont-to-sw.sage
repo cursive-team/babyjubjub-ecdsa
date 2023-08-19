@@ -23,31 +23,45 @@ p = "218882428718392752222464057452572750885483644004160343436982041865758084956
 # Convert to Weierstrass form
 a, b = montgomery_to_weierstrass(A, p)
 
+print("Curve params")
 print("a", hex(a))
 print("b", hex(b))
+print("p", hex(int(p)))
+print()
 
 # Now you can define your Weierstrass curve
 E = EllipticCurve(GF(p), [a, b])
 
 # Validate order of curve
 order = E.order()
+print("order", hex(order))
+
 if order == 21888242871839275222246405745257275088614511777268538073601725287587578984328:
     print("This is the correct order!")
 else:
     print("This is the wrong order!")
+print()
 
-print("p", hex(int(p)))
-print("order", hex(order))
+# Create another generator
+gens = E.gens()[0]
+print("Example generator", [hex(int(c)) for c in gens.xy()])
 
 # Verify if Marcus's generator is valid
 P = E(7296080957279758407415468581752425029516121466805344781232734728858602888112, 4258727773875940690362607550498304598101071202821725296872974770776423442226) 
 is_generator = (order == P.order())
 
+is_marcus = P.xy() == (0x10216f7ba065e00de81ac1e7808072c9b8114d6d7de87adb16a0a7315000dbb0, 0x096a5ac087967ada390c3b657121a172c9921a00641b2b0ccb45c0d05cc6a732)
+
+if is_marcus:
+  print("P is indeed Marcus's original generator")
+else:
+  print("P is not Marcus's original generator")
+
 if is_generator:
-    print(P.xy(), "is a generator for curve E")
+    print([hex(int(c)) for c in P.xy()], "is a generator for curve E")
 else:
     print("P is not a generator for E")
-
+print()
 
 # Verify signature manually
 sk = Integer("0xabadbabeabadbabeabadbabeabadbabe")
@@ -72,11 +86,16 @@ else:
     print("The signature is invalid.")
 
 """
+
 a 0x10216f7ba065e00de81ac1e7808072c9b8114d6d7de87adb16a0a72f1a91f6a0
 b 0x23d885f647fed5743cad3d1ee4aba9c043b4ac0fc2766658a410efdeb21f706e
 This is the correct order!
 Order of the curve: 21888242871839275222246405745257275088614511777268538073601725287587578984328
 (7296080957279758407415468581752425029516121466805344781232734728858602888112, 4258727773875940690362607550498304598101071202821725296872974770776423442226) is a generator for curve E
+
+// x-coordinate
+  10216f7ba065e00de81ac1e7808072c9b8114d6d7de87adb16a0a7315000dbb0,
+// y-coordinate
+  096a5ac087967ada390c3b657121a172c9921a00641b2b0ccb45c0d05cc6a732
+
 """
-
-
