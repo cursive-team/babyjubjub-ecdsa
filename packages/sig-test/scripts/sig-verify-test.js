@@ -14,8 +14,8 @@ const curve = {
     y: "0x203a710160811d5c07ebaeb8fe1d9ce201c66b970d66f18d0d2b264c195309aa",
   },
   n: new BN(
-    "2736030358979909402780800718157159386076813972158567259200215660948447373041",
-    10
+    "0x60c89ce5c263405370a08b6d0302b0bab3eedb83920ee0a677297dc392126f1",
+    16
   ),
   h: "8",
   type: "short",
@@ -33,18 +33,4 @@ const privateKey = Buffer.from("abadbabeabadbabeabadbabeabadbabe", "hex");
 
 // get keypair from public key (x,y)
 const keyPair = babyjubjub.keyFromPrivate(privateKey);
-console.log(keyPair);
 const msgHash = Buffer.from("abadbabeabadbabeabadbabeabadbabe", "hex");
-
-const signature = {
-  r: new BN(
-    "D47ADE8DCF5E8A8BD7EB3B3A73251489E5C70E45AA5DEFFDB56ACC23E52D5D9C",
-    16
-  ),
-  s: new BN(
-    "F401C2C2C1A98952FD14FE53E5B5B6D40BE6796FB772D224FECC56FAAF43C8A1",
-    16
-  ),
-};
-
-const isValidSignature = keyPair.verify(msgHash, signature);
