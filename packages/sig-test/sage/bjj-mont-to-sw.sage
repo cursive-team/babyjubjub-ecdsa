@@ -33,69 +33,52 @@ print()
 E = EllipticCurve(GF(p), [a, b])
 
 # Validate order of curve
-order = E.order()
-print("order", hex(order))
+curve_order = E.order()
+print("Curve order verification")
+print("order", hex(curve_order))
 
-if order == 21888242871839275222246405745257275088614511777268538073601725287587578984328:
+if curve_order == 21888242871839275222246405745257275088614511777268538073601725287587578984328:
     print("This is the correct order!")
 else:
     print("This is the wrong order!")
 print()
 
-# Create another generator
-gens = E.gens()[0]
-print("Example generator", [hex(int(c)) for c in gens.xy()])
-
-# Verify if Marcus's generator is valid
+# Create a base point
+print("Main subgroup order", hex(int(2736030358979909402780800718157159386076813972158567259200215660948447373041)))
 P = E(7296080957279758407415468581752425029516121466805344781232734728858602888112, 4258727773875940690362607550498304598101071202821725296872974770776423442226) 
-is_generator = (order == P.order())
+base = 8 * P
+base_order = curve_order / 8
 
-is_marcus = P.xy() == (0x10216f7ba065e00de81ac1e7808072c9b8114d6d7de87adb16a0a7315000dbb0, 0x096a5ac087967ada390c3b657121a172c9921a00641b2b0ccb45c0d05cc6a732)
-
-if is_marcus:
-  print("P is indeed Marcus's original generator")
-else:
-  print("P is not Marcus's original generator")
-
-if is_generator:
-    print([hex(int(c)) for c in P.xy()], "is a generator for curve E")
-else:
-    print("P is not a generator for E")
-print()
+if base.order().is_prime() and base.order() == 2736030358979909402780800718157159386076813972158567259200215660948447373041:
+    print("Example base point")
+    print(base.xy())
+    print([hex(int(c)) for c in base.xy()])
 
 # Verify signature manually
 sk = Integer("0xabadbabeabadbabeabadbabeabadbabe")
 msg = Integer("0xabadbabeabadbabeabadbabeabadbabe")
-pk = sk * P
-r = Integer("0x2BEDFB9F245D5D62866685C6ABFEDE2FFBAB4EC858B7CA1E827EDDE3097580DF")
-s = Integer("0xDC89AA8543992D166792DA1EFAA750BFA8ED908070203126E7B89FB9237985F5")
 
-if r >= order:
-    print("r is too large", float(r)/order)
-if s >= order:
-    print("s is too large", float(s)/order)
+if sk < base_order:
+    print(sk, "is a fine private key")
+else:
+    print(sk, "is not an okay private key")
+
+# Manually verify signature
+pk = sk * base
+r = Integer("0x5ab098d6016e6f886d3deca0cb25f311f45129fe6679d19fdc7de80510fb8ea")
+s = Integer("0x4c03f936209f7b00f1db3893715665ece1642a90217a60ee903d686ca2b0384")
+
+if r >= base_order:
+    print("r is too large")
+if s >= base_order:
+    print("s is too large")
     
-w = inverse_mod(s, order)
-u1 = (msg * w) % order
-u2 = (r * w) % order
-point = u1 * P + u2 * pk
+w = inverse_mod(s, base_order)
+u1 = (msg * w) % base_order
+u2 = (r * w) % base_order
+point = u1 * base + u2 * pk
 
-if point[0] == (r % order):
+if point[0] == r:
     print("The signature is valid.")
 else:
     print("The signature is invalid.")
-
-"""
-
-a 0x10216f7ba065e00de81ac1e7808072c9b8114d6d7de87adb16a0a72f1a91f6a0
-b 0x23d885f647fed5743cad3d1ee4aba9c043b4ac0fc2766658a410efdeb21f706e
-This is the correct order!
-Order of the curve: 21888242871839275222246405745257275088614511777268538073601725287587578984328
-(7296080957279758407415468581752425029516121466805344781232734728858602888112, 4258727773875940690362607550498304598101071202821725296872974770776423442226) is a generator for curve E
-
-// x-coordinate
-  10216f7ba065e00de81ac1e7808072c9b8114d6d7de87adb16a0a7315000dbb0,
-// y-coordinate
-  096a5ac087967ada390c3b657121a172c9921a00641b2b0ccb45c0d05cc6a732
-
-"""
