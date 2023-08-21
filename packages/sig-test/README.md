@@ -12,19 +12,17 @@ Here are the different pairs of generation/verification implementations, and if 
 | ---------- | --------- | ------ |
 | Python     | Python    | ✅     |
 | SAGE       | SAGE      | ✅     |
-| JS         | JS        | ❌     |
+| Python     | SAGE      | ✅     |
+| SAGE       | Python    | ✅     |
 | JavaCard   | SAGE      | ✅     |
-| JavaCard   | Python    | ❌     |
+| JavaCard   | Python    | ✅     |
 | JavaCard   | JS        | ❌     |
-| Python     | SAGE      | ❌     |
+| JS         | JS        | ❌     |
 | Python     | JS        | ❌     |
-| SAGE       | Python    | ❌     |
 | SAGE       | JS        | ❌     |
 | JS         | SAGE      | ❌     |
 
-Excitingly, we have our first verification of JavaCard-generated signatures in SAGE, in the `sage/bjj-mont-to-sw.sage` file!
-
-The Python generation/verification seems to be doing some truncation of the digest message to fit in Fp, and thus isn't interoperable yet. But I am hoping that bug should be easy to fix, and then all the generation/verification pairs involving Python will work.
+Excitingly, we have our first verification of JavaCard-generated signatures in SAGE and Python, in the `sage/bjj-mont-to-sw.sage` and `python/sig-verify-test.py` files!
 
 The JS generation/verification hasn't worked, but I will try other libraries. It is important to get this working as we would also like to produce **synthetic** (aka non-NFC) baby jubjub signatures from websites to expand the number of people who can produce sigs.
 
