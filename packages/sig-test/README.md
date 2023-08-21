@@ -28,4 +28,4 @@ The Python generation/verification seems to be doing some truncation of the dige
 
 The JS generation/verification hasn't worked, but I will try other libraries. It is important to get this working as we would also like to produce **synthetic** (aka non-NFC) baby jubjub signatures from websites to expand the number of people who can produce sigs.
 
-After we get the other pairs working, we can have strong confidence that the JavaCard definition is working. An additional test should be to perform is to verify an (efficient) ECDSA signature from JavaCards in Groth16.
+After we get the other pairs working, we can have strong confidence that the JavaCard definition is working. An additional test to perform is to verify an (efficient) ECDSA baby jubjub signature from JavaCards in Groth16.
