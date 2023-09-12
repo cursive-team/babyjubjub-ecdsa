@@ -49,6 +49,13 @@ curveFp = ellipticcurve.CurveFp(p, a, b)
 generator = ellipticcurve.Point(curveFp, Gx, Gy, order=order)
 curve = curves.Curve('babyjubjub', curveFp, generator, None)
 
+# code to randomly generate three valid private keys for this curve
+print("Generate private keys")
+for i in range(0, 3):
+  private_key = SigningKey.generate(curve=curve)
+  print(f'sk{i}', private_key.to_string().hex())
+print()
+
 # different private key options
 random_private_key_value = 0x04031627028b95196e3bfe3b73c894d814dadedb20c6d7ed83e274c95e00bfc3
 random_private_key = SigningKey.from_secret_exponent(random_private_key_value, curve=curve)
