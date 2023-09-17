@@ -1,5 +1,5 @@
-from ecdsa import ellipticcurve, numbertheory, ecdsa, SigningKey, VerifyingKey, curves
-from ecdsa.util import string_to_number, number_to_string, sigdecode_string, sigencode_string
+from ecdsa import ellipticcurve, SigningKey, curves
+from ecdsa.util import sigdecode_string, sigencode_string
 
 # null hash function
 class HashOut:
