@@ -26,6 +26,14 @@ template EfficientECDSA() {
     component sBits = Num2Bits(bits);
     sBits.in <== s;
 
+    // check T, U are on curve
+    component checkT = BabyCheck();
+    checkT.x <== Tx;
+    checkT.y <== Ty;
+    component checkU = BabyCheck();
+    checkU.x <== Ux;
+    checkU.y <== Uy;
+
     // sMultT = s * T
     component sMultT = EscalarMulAny(bits);
     var i;
