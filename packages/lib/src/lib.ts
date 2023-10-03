@@ -1,22 +1,32 @@
 const snarkjs = require("snarkjs");
 const fs = require("fs");
-import {
-  MerkleProof,
-  IncrementalMerkleTree,
-} from "@zk-kit/incremental-merkle-tree";
+import { IncrementalMerkleTree } from "@zk-kit/incremental-merkle-tree";
 import { buildPoseidon } from "circomlibjs";
-import { Signature, ZKP, MembershipProofInputs } from "./types";
+import { Signature, ZKP, MembershipProofInputs, MerkleProof } from "./types";
 import { getPublicInputsFromSignature } from "./witness";
-import { hashMessage } from "./sig";
-import { WeierstrassPoint } from "./babyJubjub";
+import {
+  bytesToBigInt,
+  bytesToHex,
+  hashMessage,
+  hashPublicKey,
+  hexToBigInt,
+  hexToBytes,
+  publicKeyFromString,
+} from "./sig";
 
 export const proveMembership = async (
   sig: Signature,
-  pubKey: WeierstrassPoint,
-  msg: string,
-  merkleProof: MerkleProof
+  pubKeys: string[],
+  index: number,
+  msg: string
 ): Promise<ZKP> => {
+  const pubKey = publicKeyFromString(pubKeys[index]);
+
+  // Todo: Recover public key from signature, remove index
   const { T, U } = getPublicInputsFromSignature(sig, msg, pubKey);
+
+  const merkleProof = await generateMerkleProof(pubKeys, index);
+
   const proofInputs: MembershipProofInputs = {
     s: sig.s,
     Tx: T.x,
@@ -28,17 +38,21 @@ export const proveMembership = async (
     siblings: merkleProof.siblings,
   };
 
+  console.log(proofInputs);
+
   return await snarkjs.groth16.fullProve(
     proofInputs,
-    "circuit.wasm",
-    "circuit.zkey"
+    __dirname + "/circuits/membership.wasm",
+    __dirname + "/circuits/membership.zkey"
   );
 };
 
 export const verifyMembership = async (zkProof: ZKP): Promise<boolean> => {
   const { proof, publicSignals } = zkProof;
 
-  const vKey = JSON.parse(fs.readFileSync("verification_key.json"));
+  const vKey = JSON.parse(
+    fs.readFileSync(__dirname + "/circuits/membership_vkey.json")
+  );
 
   return await snarkjs.groth16.verify(vKey, publicSignals, proof);
 };
@@ -48,12 +62,29 @@ export const generateMerkleProof = async (
   index: number
 ): Promise<MerkleProof> => {
   const poseidon = await buildPoseidon();
+  const hashedPubKeys = pubKeys.map(hashPublicKey);
+  const tree = new IncrementalMerkleTree(
+    poseidon,
+    10,
+    BigInt(0),
+    2,
+    hashedPubKeys
+  );
 
-  pubKeys.forEach((pubKey) => {
-    return hashMessage(pubKey);
+  const proof = tree.createProof(index);
+
+  const root = bytesToBigInt(proof.root);
+  const siblings = proof.siblings.map((siblingArray) => {
+    const sibling = siblingArray[0];
+    if (typeof sibling === "bigint") {
+      return sibling;
+    }
+    return bytesToBigInt(sibling);
   });
 
-  const tree = new IncrementalMerkleTree(poseidon, 10, BigInt(0), 2, pubKeys);
-
-  return tree.createProof(index);
+  return {
+    root,
+    pathIndices: proof.pathIndices,
+    siblings,
+  };
 };

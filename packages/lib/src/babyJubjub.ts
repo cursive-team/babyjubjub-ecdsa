@@ -32,14 +32,14 @@ export const scalarField = new ZqField(
 );
 export const cofactor = 8;
 
-export const privateKeyToPublicKey = (privKey: BigInt): WeierstrassPoint => {
+export const privateKeyToPublicKey = (privKey: bigint): WeierstrassPoint => {
   const pubKeyPoint = babyjubjub.g.mul(privKey.toString(16));
   return new WeierstrassPoint(pubKeyPoint.getX(), pubKeyPoint.getY());
 };
 
 export interface CurvePoint {
-  x: BigInt;
-  y: BigInt;
+  x: bigint;
+  y: bigint;
 
   equals(other: CurvePoint): boolean;
 
@@ -47,10 +47,10 @@ export interface CurvePoint {
 }
 
 export class WeierstrassPoint implements CurvePoint {
-  public x: BigInt;
-  public y: BigInt;
+  public x: bigint;
+  public y: bigint;
 
-  constructor(x: BigInt, y: BigInt) {
+  constructor(x: bigint, y: bigint) {
     this.x = x;
     this.y = y;
   }
@@ -102,10 +102,10 @@ export class WeierstrassPoint implements CurvePoint {
 }
 
 export class EdwardsPoint implements CurvePoint {
-  public x: BigInt;
-  public y: BigInt;
+  public x: bigint;
+  public y: bigint;
 
-  constructor(x: BigInt, y: BigInt) {
+  constructor(x: bigint, y: bigint) {
     this.x = x;
     this.y = y;
   }
@@ -126,6 +126,7 @@ export class EdwardsPoint implements CurvePoint {
   }
 
   toWeierstrass(): WeierstrassPoint {
+    throw new Error("Not implemented");
     return new WeierstrassPoint(this.x, this.y);
   }
 

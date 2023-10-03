@@ -2,9 +2,9 @@ import {
   getPublicInputsFromSignature,
   privateKeyToPublicKey,
 } from "../src/witness";
-import { hexToBigInt } from "../src/sig";
+import { hexToBigInt, publicKeyFromString } from "../src/sig";
 import { verifyEcdsaSignature } from "../src/witness";
-import { EdwardsPoint } from "../src/babyJubjub";
+import { EdwardsPoint, WeierstrassPoint } from "../src/babyJubjub";
 
 describe("javascript signature verification", () => {
   test("should verify a baby jubjub ecdsa signature 0", () => {
@@ -93,5 +93,103 @@ describe("membership proof input generation", () => {
     expect(getPublicInputsFromSignature(sig, msg, pubKey)).toEqual(
       expectedPublicInputs
     );
+  });
+
+  test("should generate the correct membership proof inputs 1", () => {
+    const privKey =
+      "0323dbbda9a5aff570d974d71c88334cf99ab9c0455e1d2546ca03ca069eb1e0";
+    const msg = "1";
+    const sig = {
+      r: hexToBigInt(
+        "04BEF5B82A7637BBFF0D3C52DDB982A00C84FE8A386625369B511CF538CD3584"
+      ),
+      s: hexToBigInt(
+        "00CA8ED01E70CEC6DE27C1B9F6735B52FB49E4521F50BEEDEED8E81459729E2E"
+      ),
+    };
+
+    const pubKey = privateKeyToPublicKey(hexToBigInt(privKey));
+
+    const expectedPublicInputs = {
+      T: new EdwardsPoint(
+        BigInt(
+          "11049791236506940775725016544774320801686704107093911375737399460678915074436"
+        ),
+        BigInt(
+          "14122061015030538160275787174689078850141853547608413074819581224165574773574"
+        )
+      ),
+      U: new EdwardsPoint(
+        BigInt(
+          "17661096655543715863576137188167626017028246425310027807366088195279768131966"
+        ),
+        BigInt(
+          "14373145511494387599713118740758989353719893153627927440414777115915318733458"
+        )
+      ),
+    };
+
+    expect(getPublicInputsFromSignature(sig, msg, pubKey)).toEqual(
+      expectedPublicInputs
+    );
+  });
+
+  test("should generate the correct membership proof inputs 2", () => {
+    const privKey =
+      "0323dbbda9a5aff570d974d71c88334cf99ab9c0455e1d2546ca03ca069eb1e0";
+    const msg = "2";
+    const sig = {
+      r: hexToBigInt(
+        "05718D88F4B6B357D2D9D53708F1C3EFE61C38C6A8BD107B2779182D80E75665"
+      ),
+      s: hexToBigInt(
+        "00906FA5864D2682981DA3B5BABBB5C3EA07E008335ED8266C55546D46B45A42"
+      ),
+    };
+
+    const pubKey = privateKeyToPublicKey(hexToBigInt(privKey));
+
+    const expectedPublicInputs = {
+      T: new EdwardsPoint(
+        BigInt(
+          "729098367187965354918943799695726574481877310930907216460139273627632312398"
+        ),
+        BigInt(
+          "11600818071736327742435312897539869536517700079344068315816316638597500129158"
+        )
+      ),
+      U: new EdwardsPoint(
+        BigInt(
+          "13434541493412593418960175739314119796705787148870284412197696617048212434250"
+        ),
+        BigInt(
+          "9218166335139589039436864178991191913089775550779587671062792149986059673719"
+        )
+      ),
+    };
+
+    expect(getPublicInputsFromSignature(sig, msg, pubKey)).toEqual(
+      expectedPublicInputs
+    );
+  });
+
+  describe("signature and key parsing utilities", () => {
+    test("should parse an encoded public key", () => {
+      const encodedPubKey =
+        "041052d6da0c3d7248e39e08912e2daa53c4e54cd9f2d96e3702fa15e77b199a501cd835bbddcc77134dc59dbbde2aa702183a68c90877906a31536eef972fac36";
+
+      const parsedPubKey = publicKeyFromString(encodedPubKey);
+
+      const expectedPubKey = new WeierstrassPoint(
+        BigInt(
+          "7383369888919701441480368741745717804236448589785295824485316386504973064784"
+        ),
+        BigInt(
+          "13046769583748125084667126323794391074141340611556711664428099286902963678262"
+        )
+      );
+
+      expect(parsedPubKey).toEqual(expectedPubKey);
+    });
   });
 });
