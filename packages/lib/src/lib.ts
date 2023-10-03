@@ -7,6 +7,7 @@ import { getPublicInputsFromSignature } from "./witness";
 import {
   bytesToBigInt,
   bytesToHex,
+  hashEdwardsPublicKey,
   hashMessage,
   hashPublicKey,
   hexToBigInt,
@@ -62,7 +63,14 @@ export const generateMerkleProof = async (
   index: number
 ): Promise<MerkleProof> => {
   const poseidon = await buildPoseidon();
-  const hashedPubKeys = pubKeys.map(hashPublicKey);
+  const hashedPubKeys = await Promise.all(
+    pubKeys.map((pubKey) => {
+      const pubKeyWeierstrass = publicKeyFromString(pubKey);
+      const pubKeyEdwards = pubKeyWeierstrass.toEdwards();
+      return hashEdwardsPublicKey(pubKeyEdwards);
+    })
+  );
+
   const tree = new IncrementalMerkleTree(
     poseidon,
     10,

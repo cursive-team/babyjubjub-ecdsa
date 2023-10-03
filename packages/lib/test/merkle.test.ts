@@ -3,8 +3,9 @@ import { generateMerkleProof } from "../src/lib";
 import {
   bigIntToBytes,
   bytesToBigInt,
-  bytesToHex,
+  hashEdwardsPublicKey,
   hashPublicKey,
+  publicKeyFromString,
 } from "../src/sig";
 
 describe("merkle tree", () => {
@@ -28,7 +29,13 @@ describe("merkle tree", () => {
       const DEFAULT_VALUE = BigInt(0);
       const poseidon = await buildPoseidon();
 
-      const leaves = pubKeys.map(hashPublicKey);
+      const leaves = await Promise.all(
+        pubKeys.map((pubKey) => {
+          const pubKeyWeierstrass = publicKeyFromString(pubKey);
+          const pubKeyEdwards = pubKeyWeierstrass.toEdwards();
+          return hashEdwardsPublicKey(pubKeyEdwards);
+        })
+      );
       for (let i = pubKeys.length; i < 2 ** TREE_DEPTH; i++) {
         leaves.push(bigIntToBytes(DEFAULT_VALUE));
       }
