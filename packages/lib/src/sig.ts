@@ -1,6 +1,6 @@
-import { WeierstrassPoint } from "./babyJubjub";
+import { EdwardsPoint, WeierstrassPoint } from "./babyJubjub";
 import { Signature } from "./types";
-import * as hash from "hash.js";
+import { buildPoseidon } from "circomlibjs";
 
 export const derDecode = (encodedSig: string): Signature => {
   const r_length = parseInt(encodedSig.slice(6, 8), 16) * 2; // Multiply by 2 to get length in hex characters
@@ -24,9 +24,23 @@ export const publicKeyFromString = (pubKey: string): WeierstrassPoint => {
   return new WeierstrassPoint(x, y);
 };
 
-export const hashPublicKey = (pubKey: string): Uint8Array => {
-  const pubKeyHash = hash.sha256().update(pubKey).digest("hex");
-  return hexToBytes(pubKeyHash);
+export const hashPublicKey = async (pubKey: string): Promise<Uint8Array> => {
+  const pubKeyPoint = publicKeyFromString(pubKey);
+  const poseidon = await buildPoseidon();
+  const hash = poseidon([
+    bigIntToBytes(pubKeyPoint.x),
+    bigIntToBytes(pubKeyPoint.y),
+  ]);
+
+  return hexToBytes(poseidon.F.toString(hash, 16));
+};
+
+export const hashEdwardsPublicKey = async (
+  pubKey: EdwardsPoint
+): Promise<Uint8Array> => {
+  const poseidon = await buildPoseidon();
+  const hash = poseidon([pubKey.x, pubKey.y]);
+  return hexToBytes(poseidon.F.toString(hash, 16));
 };
 
 export const hashMessage = (msg: string): bigint => {
@@ -43,8 +57,27 @@ export const bigIntToHex = (bigInt: BigInt): string => {
 };
 
 export const hexToBytes = (hex: string): Uint8Array => {
+  let zeroPaddedHex = hex;
+  if (hex.length % 2 !== 0) {
+    zeroPaddedHex = "0" + hex;
+  }
+
   return Uint8Array.from(
-    hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
+    zeroPaddedHex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
+  );
+};
+
+export const hexToBytesLE = (hex: string): Uint8Array => {
+  let zeroPaddedHex = hex;
+  if (hex.length % 2 !== 0) {
+    zeroPaddedHex = "0" + hex;
+  }
+
+  return Uint8Array.from(
+    zeroPaddedHex
+      .match(/.{1,2}/g)!
+      .map((byte) => parseInt(byte, 16))
+      .reverse()
   );
 };
 
@@ -55,10 +88,25 @@ export const bytesToHex = (bytes: Uint8Array): string => {
   );
 };
 
+export const bytesToHexLE = (bytes: Uint8Array): string => {
+  return bytes.reduce(
+    (str, byte) => byte.toString(16).padStart(2, "0") + str,
+    ""
+  );
+};
+
 export const bytesToBigInt = (bytes: Uint8Array): bigint => {
   return hexToBigInt(bytesToHex(bytes));
 };
 
+export const bytesToBigIntLE = (bytes: Uint8Array): bigint => {
+  return hexToBigInt(bytesToHexLE(bytes));
+};
+
 export const bigIntToBytes = (bigInt: bigint): Uint8Array => {
   return hexToBytes(bigIntToHex(bigInt));
+};
+
+export const bigIntToBytesLE = (bigInt: bigint): Uint8Array => {
+  return hexToBytesLE(bigIntToHex(bigInt));
 };
