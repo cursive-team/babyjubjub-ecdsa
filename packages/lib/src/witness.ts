@@ -11,7 +11,7 @@ import {
 import { Signature } from "./types";
 import { hashMessage } from "./sig";
 
-export const privateKeyToPublicKey = (privKey: BigInt): WeierstrassPoint => {
+export const privateKeyToPublicKey = (privKey: bigint): WeierstrassPoint => {
   const pubKeyPoint = babyjubjub.g.mul(privKey.toString(16));
   return WeierstrassPoint.fromEllipticPoint(pubKeyPoint);
 };

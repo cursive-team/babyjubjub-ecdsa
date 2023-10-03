@@ -1,23 +1,23 @@
 export type Signature = {
-  r: BigInt;
-  s: BigInt;
+  r: bigint;
+  s: bigint;
 };
 
 export type MembershipProofInputs = {
-  s: BigInt;
-  root: BigInt;
-  Tx: BigInt;
-  Ty: BigInt;
-  Ux: BigInt;
-  Uy: BigInt;
+  s: bigint;
+  root: bigint;
+  Tx: bigint;
+  Ty: bigint;
+  Ux: bigint;
+  Uy: bigint;
   pathIndices: number[];
-  siblings: BigInt[];
+  siblings: bigint[];
 };
 
 export interface MerkleProof {
-  root: BigInt;
-  pathIndices: BigInt[];
-  siblings: BigInt[];
+  root: bigint;
+  pathIndices: number[];
+  siblings: bigint[];
 }
 
 export type ZKP = { proof: string; publicSignals: string };
