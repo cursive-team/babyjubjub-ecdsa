@@ -79,7 +79,21 @@ export class WeierstrassPoint implements CurvePoint {
   }
 
   toEdwards(): EdwardsPoint {
-    return new EdwardsPoint(this.x, this.y);
+    if (this.isInfinity()) {
+      return EdwardsPoint.infinity();
+    }
+
+    const malpha = baseField.div(BigInt(168698), BigInt(3));
+    const mx = baseField.sub(BigInt(this.x.toString()), BigInt(malpha));
+    const my = this.y;
+
+    const ex = baseField.div(BigInt(mx), BigInt(my.toString()));
+    const ey = baseField.div(
+      BigInt(baseField.sub(BigInt(mx), BigInt(1))),
+      BigInt(baseField.add(BigInt(mx), BigInt(1)))
+    );
+
+    return new EdwardsPoint(ex, ey);
   }
 
   toString(): string {
@@ -97,7 +111,18 @@ export class EdwardsPoint implements CurvePoint {
   }
 
   equals(other: CurvePoint): boolean {
-    return this.x === other.x && this.y === other.y;
+    return (
+      this.x.toString() === other.x.toString() &&
+      this.y.toString() === other.y.toString()
+    );
+  }
+
+  static infinity(): EdwardsPoint {
+    return new EdwardsPoint(BigInt(0), BigInt(1));
+  }
+
+  isInfinity(): boolean {
+    return this.x === BigInt(0) && this.y === BigInt(1);
   }
 
   toWeierstrass(): WeierstrassPoint {
