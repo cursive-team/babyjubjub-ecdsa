@@ -3,26 +3,19 @@ import {
   privateKeyToPublicKey,
 } from "../src/witness";
 import {
-  bigIntToBytes,
-  bigIntToBytesLE,
-  bigIntToHex,
-  bytesToBigInt,
-  bytesToBigIntLE,
-  bytesToHex,
-  bytesToHexLE,
   hashEdwardsPublicKey,
   hexToBigInt,
   publicKeyFromString,
 } from "../src/sig";
 import { verifyEcdsaSignature } from "../src/witness";
 import { EdwardsPoint, WeierstrassPoint } from "../src/babyJubjub";
-import { buildPoseidon, buildPoseidonReference } from "circomlibjs";
+import { buildPoseidon } from "circomlibjs";
 
 describe("javascript signature verification", () => {
   test("should verify a baby jubjub ecdsa signature 0", () => {
     const privKey =
       "0323dbbda9a5aff570d974d71c88334cf99ab9c0455e1d2546ca03ca069eb1e0";
-    const msg = "0";
+    const msgHash = BigInt("0");
     const sig = {
       r: hexToBigInt(
         "00EF7145470CEC0B683C629CBA8ED58110000FFE657366F7D5A91F2D149DD8B5"
@@ -34,13 +27,13 @@ describe("javascript signature verification", () => {
 
     const pubKey = privateKeyToPublicKey(hexToBigInt(privKey));
 
-    expect(verifyEcdsaSignature(sig, msg, pubKey)).toBe(true);
+    expect(verifyEcdsaSignature(sig, msgHash, pubKey)).toBe(true);
   });
 
   test("should verify a baby jubjub ecdsa signature 1", () => {
     const privKey =
       "0323dbbda9a5aff570d974d71c88334cf99ab9c0455e1d2546ca03ca069eb1e0";
-    const msg = "1";
+    const msgHash = BigInt("1");
     const sig = {
       r: hexToBigInt(
         "04BEF5B82A7637BBFF0D3C52DDB982A00C84FE8A386625369B511CF538CD3584"
@@ -52,13 +45,13 @@ describe("javascript signature verification", () => {
 
     const pubKey = privateKeyToPublicKey(hexToBigInt(privKey));
 
-    expect(verifyEcdsaSignature(sig, msg, pubKey)).toBe(true);
+    expect(verifyEcdsaSignature(sig, msgHash, pubKey)).toBe(true);
   });
 
   test("should verify a baby jubjub ecdsa signature 2", () => {
     const privKey =
       "0323dbbda9a5aff570d974d71c88334cf99ab9c0455e1d2546ca03ca069eb1e0";
-    const msg = "2";
+    const msgHash = BigInt("2");
     const sig = {
       r: hexToBigInt(
         "05718D88F4B6B357D2D9D53708F1C3EFE61C38C6A8BD107B2779182D80E75665"
@@ -70,7 +63,7 @@ describe("javascript signature verification", () => {
 
     const pubKey = privateKeyToPublicKey(hexToBigInt(privKey));
 
-    expect(verifyEcdsaSignature(sig, msg, pubKey)).toBe(true);
+    expect(verifyEcdsaSignature(sig, msgHash, pubKey)).toBe(true);
   });
 });
 
@@ -78,7 +71,7 @@ describe("membership proof input generation", () => {
   test("should generate the correct membership proof inputs 0", () => {
     const privKey =
       "0323dbbda9a5aff570d974d71c88334cf99ab9c0455e1d2546ca03ca069eb1e0";
-    const msg = "0";
+    const msgHash = BigInt("0");
     const sig = {
       r: hexToBigInt(
         "00EF7145470CEC0B683C629CBA8ED58110000FFE657366F7D5A91F2D149DD8B5"
@@ -102,7 +95,7 @@ describe("membership proof input generation", () => {
       U: new EdwardsPoint(BigInt("0"), BigInt("1")),
     };
 
-    expect(getPublicInputsFromSignature(sig, msg, pubKey)).toEqual(
+    expect(getPublicInputsFromSignature(sig, msgHash, pubKey)).toEqual(
       expectedPublicInputs
     );
   });
@@ -110,7 +103,7 @@ describe("membership proof input generation", () => {
   test("should generate the correct membership proof inputs 1", () => {
     const privKey =
       "0323dbbda9a5aff570d974d71c88334cf99ab9c0455e1d2546ca03ca069eb1e0";
-    const msg = "1";
+    const msgHash = BigInt("1");
     const sig = {
       r: hexToBigInt(
         "04BEF5B82A7637BBFF0D3C52DDB982A00C84FE8A386625369B511CF538CD3584"
@@ -141,7 +134,7 @@ describe("membership proof input generation", () => {
       ),
     };
 
-    expect(getPublicInputsFromSignature(sig, msg, pubKey)).toEqual(
+    expect(getPublicInputsFromSignature(sig, msgHash, pubKey)).toEqual(
       expectedPublicInputs
     );
   });
@@ -149,7 +142,7 @@ describe("membership proof input generation", () => {
   test("should generate the correct membership proof inputs 2", () => {
     const privKey =
       "0323dbbda9a5aff570d974d71c88334cf99ab9c0455e1d2546ca03ca069eb1e0";
-    const msg = "2";
+    const msgHash = BigInt("2");
     const sig = {
       r: hexToBigInt(
         "05718D88F4B6B357D2D9D53708F1C3EFE61C38C6A8BD107B2779182D80E75665"
@@ -180,7 +173,7 @@ describe("membership proof input generation", () => {
       ),
     };
 
-    expect(getPublicInputsFromSignature(sig, msg, pubKey)).toEqual(
+    expect(getPublicInputsFromSignature(sig, msgHash, pubKey)).toEqual(
       expectedPublicInputs
     );
   });
@@ -217,7 +210,7 @@ describe("signature and key parsing utilities", () => {
 
     const hash = await hashEdwardsPublicKey(pubKey);
 
-    expect(bytesToBigInt(hash)).toEqual(
+    expect(hash).toEqual(
       BigInt(
         "473788188026338532754827614266124932928610354793582188635738505121763471517"
       )

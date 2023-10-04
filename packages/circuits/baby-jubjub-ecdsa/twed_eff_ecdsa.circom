@@ -9,7 +9,9 @@ include "../../../node_modules/circomlib/circuits/escalarmulany.circom";
  *  ====================
  *  
  *  Converts inputted efficient ECDSA signature to an public key. There is no
- *  public key validation included.
+ *  public key validation included. Takes in points in Twisted Edwards form
+ *  and uses Edwards addition and scalar multiplication. Returns computed
+ *  public key in Edwards form.
  */
 template EfficientECDSA() {
     var bits = 256;
