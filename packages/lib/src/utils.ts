@@ -1,6 +1,6 @@
 import { EdwardsPoint, WeierstrassPoint } from "./babyJubjub";
 import { Signature } from "./types";
-import { buildPoseidon } from "circomlibjs";
+import { buildPoseidonReference } from "circomlibjs";
 
 export const derDecode = (encodedSig: string): Signature => {
   const r_length = parseInt(encodedSig.slice(6, 8), 16) * 2; // Multiply by 2 to get length in hex characters
@@ -26,7 +26,7 @@ export const publicKeyFromString = (pubKey: string): WeierstrassPoint => {
 
 export const hashPublicKey = async (pubKey: string): Promise<bigint> => {
   const pubKeyPoint = publicKeyFromString(pubKey);
-  const poseidon = await buildPoseidon();
+  const poseidon = await buildPoseidonReference();
   const hash = poseidon([
     bigIntToBytes(pubKeyPoint.x),
     bigIntToBytes(pubKeyPoint.y),
@@ -38,7 +38,7 @@ export const hashPublicKey = async (pubKey: string): Promise<bigint> => {
 export const hashEdwardsPublicKey = async (
   pubKey: EdwardsPoint
 ): Promise<bigint> => {
-  const poseidon = await buildPoseidon();
+  const poseidon = await buildPoseidonReference();
   const hash = poseidon([pubKey.x, pubKey.y]);
   return hexToBigInt(poseidon.F.toString(hash, 16));
 };

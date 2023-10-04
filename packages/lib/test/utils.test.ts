@@ -1,6 +1,6 @@
 import { hashEdwardsPublicKey, publicKeyFromString } from "../src/utils";
 import { EdwardsPoint, WeierstrassPoint } from "../src/babyJubjub";
-import { buildPoseidon } from "circomlibjs";
+import { buildPoseidonReference } from "circomlibjs";
 
 describe("signature and key parsing utilities", () => {
   test("should parse an encoded public key", () => {
@@ -46,7 +46,7 @@ describe("signature and key parsing utilities", () => {
     const a = 1;
     const b = 2;
 
-    const poseidon = await buildPoseidon();
+    const poseidon = await buildPoseidonReference();
     const hash = poseidon.F.toString(poseidon([a, b]), 16);
 
     expect(hash).toEqual(expected);
@@ -60,7 +60,7 @@ describe("signature and key parsing utilities", () => {
     const b =
       "15702184800053625297652133943476286357553803483146409610785811576616213183541";
 
-    const poseidon = await buildPoseidon();
+    const poseidon = await buildPoseidonReference();
     const hash = poseidon.F.toString(poseidon([a, b]), 10);
 
     expect(hash).toEqual(expected);
