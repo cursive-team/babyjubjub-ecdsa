@@ -4,7 +4,6 @@
   "main": "src/lib.ts",
   "license": "MIT",
   "dependencies": {
-    "@zk-kit/incremental-merkle-tree": "^1.1.0",
     "circomlibjs": "^0.1.7",
     "elliptic": "^6.5.4",
     "snarkjs": "^0.7.1"

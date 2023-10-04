@@ -42,5 +42,6 @@ template PubKeyMembership(nLevels) {
         merkleProof.pathIndices[i] <== pathIndices[i];
         merkleProof.siblings[i] <== siblings[i];
     }
+    
     root === merkleProof.root;
 }

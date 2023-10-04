@@ -9,7 +9,6 @@ import {
   cofactor,
 } from "./babyJubjub";
 import { Signature } from "./types";
-import { hashMessage } from "./sig";
 
 export const privateKeyToPublicKey = (privKey: bigint): WeierstrassPoint => {
   const pubKeyPoint = babyjubjub.g.mul(privKey.toString(16));
@@ -18,10 +17,9 @@ export const privateKeyToPublicKey = (privKey: bigint): WeierstrassPoint => {
 
 export const verifyEcdsaSignature = (
   sig: Signature,
-  message: string,
+  msgHash: bigint,
   pubKey: WeierstrassPoint
 ): boolean => {
-  const msgHash = message;
   const ecSignature = new ECSignature({
     r: sig.r.toString(16),
     s: sig.s.toString(16),
@@ -37,7 +35,7 @@ export const verifyEcdsaSignature = (
 
 export const getPublicInputsFromSignature = (
   sig: Signature,
-  msg: string,
+  msgHash: bigint,
   pubKey: WeierstrassPoint
 ): { T: EdwardsPoint; U: EdwardsPoint } => {
   for (const i of Array(cofactor).keys()) {
@@ -52,9 +50,8 @@ export const getPublicInputsFromSignature = (
       }
       const rawT = R.mul(rInv.toString(16));
       const T = WeierstrassPoint.fromEllipticPoint(rawT);
-      const m = BigInt(msg);
       const G = babyjubjub.curve.g;
-      const rInvm = Fs.neg(Fs.mul(rInv, m));
+      const rInvm = Fs.neg(Fs.mul(rInv, msgHash));
       const rawU = G.mul(rInvm.toString(16));
       const U = WeierstrassPoint.fromEllipticPoint(rawU);
       const sT = rawT.mul(sig.s.toString(16));

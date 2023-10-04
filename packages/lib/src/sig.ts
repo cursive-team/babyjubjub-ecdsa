@@ -37,10 +37,10 @@ export const hashPublicKey = async (pubKey: string): Promise<Uint8Array> => {
 
 export const hashEdwardsPublicKey = async (
   pubKey: EdwardsPoint
-): Promise<Uint8Array> => {
+): Promise<bigint> => {
   const poseidon = await buildPoseidon();
   const hash = poseidon([pubKey.x, pubKey.y]);
-  return hexToBytes(poseidon.F.toString(hash, 16));
+  return hexToBigInt(poseidon.F.toString(hash, 16));
 };
 
 export const hashMessage = (msg: string): bigint => {
