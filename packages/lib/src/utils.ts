@@ -24,7 +24,7 @@ export const publicKeyFromString = (pubKey: string): WeierstrassPoint => {
   return new WeierstrassPoint(x, y);
 };
 
-export const hashPublicKey = async (pubKey: string): Promise<Uint8Array> => {
+export const hashPublicKey = async (pubKey: string): Promise<bigint> => {
   const pubKeyPoint = publicKeyFromString(pubKey);
   const poseidon = await buildPoseidon();
   const hash = poseidon([
@@ -32,7 +32,7 @@ export const hashPublicKey = async (pubKey: string): Promise<Uint8Array> => {
     bigIntToBytes(pubKeyPoint.y),
   ]);
 
-  return hexToBytes(poseidon.F.toString(hash, 16));
+  return hexToBigInt(poseidon.F.toString(hash, 16));
 };
 
 export const hashEdwardsPublicKey = async (

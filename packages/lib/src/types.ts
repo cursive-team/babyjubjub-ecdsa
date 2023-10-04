@@ -1,3 +1,12 @@
+import { ZqField } from "ffjavascript";
+
+export type BabyJubJub = {
+  ec: any;
+  Fb: ZqField;
+  Fs: ZqField;
+  cofactor: number;
+};
+
 export type Signature = {
   r: bigint;
   s: bigint;
