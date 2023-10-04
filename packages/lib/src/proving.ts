@@ -37,10 +37,11 @@ export const proveMembership = async (
 
   console.time("Proving");
 
+  const circuitsPath = getPathToCircuits();
   const proof = await snarkjs.groth16.fullProve(
     proofInputs,
-    __dirname + "/circuits/pubkey_membership.wasm",
-    __dirname + "/circuits/pubkey_membership.zkey"
+    circuitsPath + "pubkey_membership.wasm",
+    circuitsPath + "pubkey_membership.zkey"
   );
 
   console.timeEnd("Proving");
@@ -54,7 +55,7 @@ export const verifyMembership = async (zkProof: ZKP): Promise<boolean> => {
   const { proof, publicSignals } = zkProof;
 
   const vKey = JSON.parse(
-    fs.readFileSync(__dirname + "/circuits/pubkey_membership_vkey.json")
+    fs.readFileSync(getPathToCircuits() + "pubkey_membership_vkey.json")
   );
 
   const verified = await snarkjs.groth16.verify(vKey, publicSignals, proof);
@@ -62,4 +63,10 @@ export const verifyMembership = async (zkProof: ZKP): Promise<boolean> => {
   console.timeEnd("Verification");
 
   return verified;
+};
+
+export const getPathToCircuits = (): string => {
+  const isNode = typeof window === "undefined";
+
+  return isNode ? __dirname + "/circuits/" : "";
 };
