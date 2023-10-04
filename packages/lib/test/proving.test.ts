@@ -1,5 +1,5 @@
-import { proveMembership, verifyMembership } from "../src/lib";
-import { hexToBigInt } from "../src/sig";
+import { proveMembership, verifyMembership } from "../src/proving";
+import { hexToBigInt } from "../src/utils";
 
 describe("zero knowledge proof generation and verification", () => {
   test("should generate and verify a membership proof", async () => {

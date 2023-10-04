@@ -1,6 +1,7 @@
 const elliptic = require("elliptic");
 import * as hash from "hash.js";
 import { ZqField } from "ffjavascript";
+import { BabyJubJub } from "./types";
 
 // Define short Weierstrass parameters
 const curveOptions = {
@@ -20,21 +21,22 @@ const curveOptions = {
 // Create an elliptic curve with the defined parameters
 const ShortWeierstrassCurve = elliptic.curve.short;
 const curve = new ShortWeierstrassCurve(curveOptions);
-
-export const babyjubjub = new elliptic.ec({
+const ec = new elliptic.ec({
   curve: { curve, g: curve.g, n: curve.n, hash: hash.sha256 },
 });
-export const baseField = new ZqField(
+const baseField = new ZqField(
   "21888242871839275222246405745257275088548364400416034343698204186575808495617"
 );
-export const scalarField = new ZqField(
+const scalarField = new ZqField(
   "2736030358979909402780800718157159386076813972158567259200215660948447373041"
 );
-export const cofactor = 8;
+const cofactor = 8;
 
-export const privateKeyToPublicKey = (privKey: bigint): WeierstrassPoint => {
-  const pubKeyPoint = babyjubjub.g.mul(privKey.toString(16));
-  return new WeierstrassPoint(pubKeyPoint.getX(), pubKeyPoint.getY());
+export const babyjubjub: BabyJubJub = {
+  ec,
+  Fb: baseField,
+  Fs: scalarField,
+  cofactor,
 };
 
 export interface CurvePoint {
@@ -127,7 +129,6 @@ export class EdwardsPoint implements CurvePoint {
 
   toWeierstrass(): WeierstrassPoint {
     throw new Error("Not implemented");
-    return new WeierstrassPoint(this.x, this.y);
   }
 
   toString(): string {
