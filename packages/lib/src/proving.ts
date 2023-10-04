@@ -8,22 +8,25 @@ export const proveMembership = async (
   sig: Signature,
   pubKeys: string[],
   index: number,
-  msgHash: bigint
+  msgHash: bigint,
+  pathToCircuits: string | undefined = undefined
 ): Promise<ZKP> => {
+  if (isNode() && pathToCircuits === undefined) {
+    throw new Error(
+      "Path to circuits must be provided for server side proving!"
+    );
+  }
+
   console.time("T and U Generation");
-
   const pubKey = publicKeyFromString(pubKeys[index]);
-
   const { T, U } = getPublicInputsFromSignature(sig, msgHash, pubKey);
-
   console.timeEnd("T and U Generation");
 
   console.time("Merkle Proof Generation");
-
   const merkleProof = await generateMerkleProof(pubKeys, index);
-
   console.timeEnd("Merkle Proof Generation");
 
+  console.time("Proving");
   const proofInputs: MembershipProofInputs = {
     s: sig.s,
     Tx: T.x,
@@ -35,46 +38,50 @@ export const proveMembership = async (
     siblings: merkleProof.siblings,
   };
 
-  console.time("Proving");
-
-  const circuitsPath = getPathToCircuits();
   const wasmPath = isNode()
-    ? circuitsPath + "pubkey_membership.wasm"
+    ? pathToCircuits + "pubkey_membership.wasm"
     : "https://storage.googleapis.com/jubmoji-circuits/pubkey_membership.wasm";
   const zkeyPath = isNode()
-    ? circuitsPath + "pubkey_membership.zkey"
+    ? pathToCircuits + "pubkey_membership.zkey"
     : "https://storage.googleapis.com/jubmoji-circuits/pubkey_membership.zkey";
+
   const proof = await snarkjs.groth16.fullProve(
     proofInputs,
     wasmPath,
     zkeyPath
   );
-
   console.timeEnd("Proving");
 
   return proof;
 };
 
-export const verifyMembership = async (zkProof: ZKP): Promise<boolean> => {
+export const verifyMembership = async (
+  { proof, publicSignals }: ZKP,
+  pathToCircuits: string | undefined = undefined
+): Promise<boolean> => {
+  if (isNode() && pathToCircuits === undefined) {
+    throw new Error(
+      "Path to circuits must be provided for server side verification!"
+    );
+  }
+
   console.time("Verification");
-
-  const { proof, publicSignals } = zkProof;
-
   const vKey = isNode()
-    ? await getVerificationKeyFromFile()
+    ? await getVerificationKeyFromFile(pathToCircuits!)
     : await getVerificationKeyFromUrl();
-
   const verified = await snarkjs.groth16.verify(vKey, publicSignals, proof);
-
   console.timeEnd("Verification");
 
   return verified;
 };
 
-const getVerificationKeyFromFile = async (): Promise<any> => {
+const getVerificationKeyFromFile = async (
+  pathToCircuits: string
+): Promise<any> => {
   const vKey = JSON.parse(
-    fs.readFileSync(getPathToCircuits() + "pubkey_membership_vkey.json")
+    fs.readFileSync(pathToCircuits + "pubkey_membership_vkey.json")
   );
+
   return vKey;
 };
 
@@ -83,11 +90,8 @@ const getVerificationKeyFromUrl = async (): Promise<any> => {
     "https://storage.googleapis.com/jubmoji-circuits/pubkey_membership_vkey.json"
   );
   const vKey = await response.json();
-  return vKey;
-};
 
-export const getPathToCircuits = (): string => {
-  return isNode() ? __dirname + "/circuits/" : "";
+  return vKey;
 };
 
 export const isNode = (): boolean => {

@@ -3,6 +3,8 @@ import { proveMembership, verifyMembership } from "../src/proving";
 import { hexToBigInt } from "../src/utils";
 
 describe("zero knowledge proof generation and verification", () => {
+  const pathToCircuits = process.cwd() + "/src/circuits/";
+
   test("should generate and verify a membership proof", async () => {
     const pubKeys = [
       "041941f5abe4f903af965d707182b688bd1fa725fd2cbc648fc435feb42a3794593275a2e9b4ad4bc0d2f3ecc8d23e3cf89da889d7aa35ce33f132d87b5bb5c393",
@@ -20,8 +22,14 @@ describe("zero knowledge proof generation and verification", () => {
       ),
     };
 
-    const zkProof = await proveMembership(sig, pubKeys, 2, msgHash);
-    const verified = await verifyMembership(zkProof);
+    const zkProof = await proveMembership(
+      sig,
+      pubKeys,
+      2,
+      msgHash,
+      pathToCircuits
+    );
+    const verified = await verifyMembership(zkProof, pathToCircuits);
 
     expect(verified).toBe(true);
   });
@@ -29,7 +37,7 @@ describe("zero knowledge proof generation and verification", () => {
   test("should verify a proof", async () => {
     const proof = JSON.parse(fs.readFileSync("./test/example_proof.json"));
 
-    const verified = await verifyMembership(proof);
+    const verified = await verifyMembership(proof, pathToCircuits);
 
     expect(verified).toBe(true);
   });
