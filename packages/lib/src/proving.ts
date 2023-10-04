@@ -38,10 +38,16 @@ export const proveMembership = async (
   console.time("Proving");
 
   const circuitsPath = getPathToCircuits();
+  const wasmPath = isNode()
+    ? circuitsPath + "pubkey_membership.wasm"
+    : "https://storage.googleapis.com/jubmoji-circuits/pubkey_membership.wasm";
+  const zkeyPath = isNode()
+    ? circuitsPath + "pubkey_membership.zkey"
+    : "https://storage.googleapis.com/jubmoji-circuits/pubkey_membership.zkey";
   const proof = await snarkjs.groth16.fullProve(
     proofInputs,
-    circuitsPath + "pubkey_membership.wasm",
-    circuitsPath + "pubkey_membership.zkey"
+    wasmPath,
+    zkeyPath
   );
 
   console.timeEnd("Proving");
@@ -54,9 +60,9 @@ export const verifyMembership = async (zkProof: ZKP): Promise<boolean> => {
 
   const { proof, publicSignals } = zkProof;
 
-  const vKey = JSON.parse(
-    fs.readFileSync(getPathToCircuits() + "pubkey_membership_vkey.json")
-  );
+  const vKey = isNode()
+    ? await getVerificationKeyFromFile()
+    : await getVerificationKeyFromUrl();
 
   const verified = await snarkjs.groth16.verify(vKey, publicSignals, proof);
 
@@ -65,8 +71,25 @@ export const verifyMembership = async (zkProof: ZKP): Promise<boolean> => {
   return verified;
 };
 
-export const getPathToCircuits = (): string => {
-  const isNode = typeof window === "undefined";
+const getVerificationKeyFromFile = async (): Promise<any> => {
+  const vKey = JSON.parse(
+    fs.readFileSync(getPathToCircuits() + "pubkey_membership_vkey.json")
+  );
+  return vKey;
+};
 
-  return isNode ? __dirname + "/circuits/" : "";
+const getVerificationKeyFromUrl = async (): Promise<any> => {
+  const response = await fetch(
+    "https://storage.googleapis.com/jubmoji-circuits/pubkey_membership_vkey.json"
+  );
+  const vKey = await response.json();
+  return vKey;
+};
+
+export const getPathToCircuits = (): string => {
+  return isNode() ? __dirname + "/circuits/" : "";
+};
+
+export const isNode = (): boolean => {
+  return typeof window === "undefined";
 };
