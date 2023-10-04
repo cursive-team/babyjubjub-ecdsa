@@ -1,3 +1,4 @@
+const fs = require("fs");
 import { proveMembership, verifyMembership } from "../src/proving";
 import { hexToBigInt } from "../src/utils";
 
@@ -21,6 +22,14 @@ describe("zero knowledge proof generation and verification", () => {
 
     const zkProof = await proveMembership(sig, pubKeys, 2, msgHash);
     const verified = await verifyMembership(zkProof);
+
+    expect(verified).toBe(true);
+  });
+
+  test("should verify a proof", async () => {
+    const proof = JSON.parse(fs.readFileSync("./test/example_proof.json"));
+
+    const verified = await verifyMembership(proof);
 
     expect(verified).toBe(true);
   });
