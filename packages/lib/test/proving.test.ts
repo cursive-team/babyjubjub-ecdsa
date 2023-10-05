@@ -3,7 +3,7 @@ import { proveMembership, verifyMembership } from "../src/proving";
 import { hexToBigInt } from "../src/utils";
 
 describe("zero knowledge proof generation and verification", () => {
-  const pathToCircuits = process.cwd() + "/src/circuits/";
+  const pathToCircuits = process.cwd() + "/test/circuits/";
 
   test("should generate and verify a membership proof", async () => {
     const pubKeys = [
@@ -35,7 +35,9 @@ describe("zero knowledge proof generation and verification", () => {
   });
 
   test("should verify a proof", async () => {
-    const proof = JSON.parse(fs.readFileSync("./test/example_proof.json"));
+    const proof = JSON.parse(
+      fs.readFileSync(pathToCircuits + "example_proof.json")
+    );
 
     const verified = await verifyMembership(proof, pathToCircuits);
 
