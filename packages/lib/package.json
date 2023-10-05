@@ -1,6 +1,6 @@
 {
   "name": "babyjubjub-ecdsa",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "main": "src/lib.ts",
   "license": "MIT",
   "dependencies": {
