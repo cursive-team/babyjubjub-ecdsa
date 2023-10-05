@@ -1,4 +1,5 @@
 const BN = require("bn.js");
+// @ts-ignore
 import { buildPoseidonReference } from "circomlibjs";
 import { EdwardsPoint, WeierstrassPoint, babyjubjub } from "./babyJubjub";
 import { Signature, MerkleProof } from "./types";
@@ -73,7 +74,7 @@ export const getPublicInputsFromSignature = (
   const Fb = babyjubjub.Fb;
   const Fs = babyjubjub.Fs;
 
-  for (const i of Array(babyjubjub.cofactor).keys()) {
+  for (let i = 0; i < babyjubjub.cofactor; i++) {
     // Todo: Use v value from signature
     for (const parity of [0, 1]) {
       const r = Fb.add(sig.r, Fb.mul(BigInt(i), Fs.p));

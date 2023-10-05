@@ -1,3 +1,4 @@
+// @ts-ignore
 import { buildPoseidonReference } from "circomlibjs";
 import {
   generateMerkleProof,
@@ -44,6 +45,9 @@ describe("merkle tree", () => {
       "4634016523752195062014614389412713184983003254567244385609775692869553859565"
     );
 
+    console.log(merkleProof.pathIndices);
+    console.log(merkleProof.siblings);
+    console.log(merkleProof.root);
     expect(merkleProof.root).toEqual(expectedRoot);
     expect(node).toEqual(expectedRoot);
   });

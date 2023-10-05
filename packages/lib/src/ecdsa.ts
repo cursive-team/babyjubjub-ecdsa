@@ -40,7 +40,7 @@ export const recoverPubKeyIndexFromSignature = (
     return pubKeyWeierstrass.toEdwards();
   });
 
-  for (const i of Array(babyjubjub.cofactor).keys()) {
+  for (let i = 0; i < babyjubjub.cofactor; i++) {
     for (const parity of [0, 1]) {
       const r = Fb.add(sig.r, Fb.mul(BigInt(i), Fs.p));
       const rInv = Fs.inv(r);
