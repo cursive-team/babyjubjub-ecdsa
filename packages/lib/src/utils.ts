@@ -1,5 +1,6 @@
 import { EdwardsPoint, WeierstrassPoint } from "./babyJubjub";
 import { Signature } from "./types";
+// @ts-ignore
 import { buildPoseidonReference } from "circomlibjs";
 
 export const derDecode = (encodedSig: string): Signature => {

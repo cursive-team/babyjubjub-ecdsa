@@ -1,3 +1,4 @@
+// @ts-ignore
 import { ZqField } from "ffjavascript";
 
 export type BabyJubJub = {

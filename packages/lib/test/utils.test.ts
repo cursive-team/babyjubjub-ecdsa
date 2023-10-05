@@ -1,5 +1,6 @@
 import { hashEdwardsPublicKey, publicKeyFromString } from "../src/utils";
 import { EdwardsPoint, WeierstrassPoint } from "../src/babyJubjub";
+// @ts-ignore
 import { buildPoseidonReference } from "circomlibjs";
 
 describe("signature and key parsing utilities", () => {
