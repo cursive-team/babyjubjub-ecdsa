@@ -52,6 +52,8 @@ export const proveMembership = async (
   );
   console.timeEnd("Proving");
 
+  await globalThis.curve_bn128.terminate();
+
   return proof;
 };
 
@@ -71,6 +73,8 @@ export const verifyMembership = async (
     : await getVerificationKeyFromUrl();
   const verified = await snarkjs.groth16.verify(vKey, publicSignals, proof);
   console.timeEnd("Verification");
+
+  await globalThis.curve_bn128.terminate();
 
   return verified;
 };
