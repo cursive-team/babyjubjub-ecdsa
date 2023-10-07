@@ -1,4 +1,5 @@
-export * from "./proving";
+export * from "./prove";
+export * from "./verify";
 export * from "./types";
 export * from "./utils";
 export * from "./inputGen";

@@ -2,12 +2,6 @@ const ECSignature = require("elliptic/lib/elliptic/ec/signature");
 const BN = require("bn.js");
 import { WeierstrassPoint, babyjubjub } from "./babyJubjub";
 import { Signature } from "./types";
-import { publicKeyFromString } from "./utils";
-
-export const privateKeyToPublicKey = (privKey: bigint): WeierstrassPoint => {
-  const pubKeyPoint = babyjubjub.ec.g.mul(privKey.toString(16));
-  return WeierstrassPoint.fromEllipticPoint(pubKeyPoint);
-};
 
 export const verifyEcdsaSignature = (
   sig: Signature,
@@ -27,17 +21,21 @@ export const verifyEcdsaSignature = (
   return babyjubjub.ec.verify(msgHash, ecSignature, ecPubKey);
 };
 
+export const privateKeyToPublicKey = (privKey: bigint): WeierstrassPoint => {
+  const pubKeyPoint = babyjubjub.ec.g.mul(privKey.toString(16));
+  return WeierstrassPoint.fromEllipticPoint(pubKeyPoint);
+};
+
 export const recoverPubKeyIndexFromSignature = (
   sig: Signature,
   msgHash: bigint,
-  pubKeys: string[]
+  pubKeys: WeierstrassPoint[]
 ): number => {
   const Fb = babyjubjub.Fb;
   const Fs = babyjubjub.Fs;
 
   const pubKeyEdwardsList = pubKeys.map((pubKey) => {
-    const pubKeyWeierstrass = publicKeyFromString(pubKey);
-    return pubKeyWeierstrass.toEdwards();
+    return pubKey.toEdwards();
   });
 
   for (let i = 0; i < babyjubjub.cofactor; i++) {

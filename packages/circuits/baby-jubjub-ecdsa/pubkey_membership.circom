@@ -1,6 +1,6 @@
 pragma circom 2.1.2;
 
-include "./twed_eff_ecdsa.circom";
+include "./baby_jubjub_ecdsa.circom";
 include "./tree.circom";
 include "../../../node_modules/circomlib/circuits/poseidon.circom";
 
@@ -23,8 +23,11 @@ template PubKeyMembership(nLevels) {
     signal input Uy;
     signal input pathIndices[nLevels];
     signal input siblings[nLevels];
+    signal input nullifierRandomness;
 
-    component ecdsa = EfficientECDSA();
+    signal output nullifier;
+
+    component ecdsa = BabyJubJubECDSA();
     ecdsa.Tx <== Tx;
     ecdsa.Ty <== Ty;
     ecdsa.Ux <== Ux;
@@ -42,6 +45,13 @@ template PubKeyMembership(nLevels) {
         merkleProof.pathIndices[i] <== pathIndices[i];
         merkleProof.siblings[i] <== siblings[i];
     }
-    
+
     root === merkleProof.root;
+
+    // nullifier = hash(s, nullifierRandomness)
+    component nullifierHash = Poseidon(2);
+    nullifierHash.inputs[0] <== s;
+    nullifierHash.inputs[1] <== nullifierRandomness;
+
+    nullifier <== nullifierHash.out;
 }

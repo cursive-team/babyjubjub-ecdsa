@@ -1,6 +1,6 @@
-const fs = require("fs");
-import { proveMembership, verifyMembership } from "../src/proving";
-import { hexToBigInt } from "../src/utils";
+import { proveMembership } from "../src/prove";
+import { verifyMembership } from "../src/verify";
+import { hexToBigInt, publicKeyFromString } from "../src/utils";
 
 describe("zero knowledge proof generation and verification", () => {
   const pathToCircuits = process.cwd() + "/test/circuits/";
@@ -21,25 +21,24 @@ describe("zero knowledge proof generation and verification", () => {
         "0370C60A23266F520C56DA088B4C4AFAAAF6BB1993A501980F6D8FB6F343984A"
       ),
     };
+    const nullifierRandomness = BigInt(0);
+    const pubKeyPoints = pubKeys.map(publicKeyFromString);
 
     const zkProof = await proveMembership(
       sig,
-      pubKeys,
+      pubKeyPoints,
       2,
       msgHash,
+      nullifierRandomness,
       pathToCircuits
     );
-    const verified = await verifyMembership(zkProof, pathToCircuits);
 
-    expect(verified).toBe(true);
-  });
-
-  test("should verify a proof", async () => {
-    const proof = JSON.parse(
-      fs.readFileSync(pathToCircuits + "example_proof.json")
+    const verified = await verifyMembership(
+      zkProof,
+      pubKeyPoints,
+      nullifierRandomness,
+      pathToCircuits
     );
-
-    const verified = await verifyMembership(proof, pathToCircuits);
 
     expect(verified).toBe(true);
   });

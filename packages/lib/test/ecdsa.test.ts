@@ -3,7 +3,7 @@ import {
   recoverPubKeyIndexFromSignature,
   verifyEcdsaSignature,
 } from "../src/ecdsa";
-import { hexToBigInt } from "../src/utils";
+import { hexToBigInt, publicKeyFromString } from "../src/utils";
 
 describe("javascript signature verification", () => {
   test("should verify a baby jubjub ecdsa signature 0", () => {
@@ -79,10 +79,12 @@ describe("ecdsa public key recovery", () => {
       ),
     };
 
+    const pubKeyPoints = pubKeys.map((pubKey) => publicKeyFromString(pubKey));
+
     const recoveredIndex = recoverPubKeyIndexFromSignature(
       sig,
       msgHash,
-      pubKeys
+      pubKeyPoints
     );
 
     const expectedIndex = 2;

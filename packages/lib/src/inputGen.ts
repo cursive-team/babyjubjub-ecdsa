@@ -3,17 +3,22 @@ const BN = require("bn.js");
 import { buildPoseidonReference } from "circomlibjs";
 import { EdwardsPoint, WeierstrassPoint, babyjubjub } from "./babyJubjub";
 import { Signature, MerkleProof } from "./types";
-import {
-  hashEdwardsPublicKey,
-  hexToBigInt,
-  publicKeyFromString,
-} from "./utils";
+import { hashEdwardsPublicKey, hexToBigInt } from "./utils";
+
+export const computeMerkleRoot = async (
+  pubKeys: EdwardsPoint[],
+  hashFn: any | undefined = undefined
+): Promise<bigint> => {
+  const proof = await generateMerkleProof(pubKeys, 0, hashFn);
+  return proof.root;
+};
 
 export const generateMerkleProof = async (
-  pubKeys: string[],
-  index: number
+  pubKeys: EdwardsPoint[],
+  index: number,
+  hashFn: any | undefined = undefined
 ): Promise<MerkleProof> => {
-  const TREE_DEPTH = 10;
+  const TREE_DEPTH = 8;
   const ZEROS = [
     "0",
     "14744269619966411208579211824598458697587494354926760081771325075741142829156",
@@ -23,18 +28,11 @@ export const generateMerkleProof = async (
     "19712377064642672829441595136074946683621277828620209496774504837737984048981",
     "20775607673010627194014556968476266066927294572720319469184847051418138353016",
     "3396914609616007258851405644437304192397291162432396347162513310381425243293",
-    "21551820661461729022865262380882070649935529853313286572328683688269863701601",
-    "6573136701248752079028194407151022595060682063033565181951145966236778420039",
   ];
-  const poseidon = await buildPoseidonReference();
+  const poseidon =
+    hashFn === undefined ? await buildPoseidonReference() : hashFn;
 
-  const leaves = await Promise.all(
-    pubKeys.map(async (pubKey) => {
-      const pubKeyWeierstrass = publicKeyFromString(pubKey);
-      const pubKeyEdwards = pubKeyWeierstrass.toEdwards();
-      return await hashEdwardsPublicKey(pubKeyEdwards);
-    })
-  );
+  const leaves = await Promise.all(pubKeys.map(hashEdwardsPublicKey));
 
   let prevLayer: bigint[] = leaves;
   let nextLayer: bigint[] = [];
@@ -70,22 +68,24 @@ export const getPublicInputsFromSignature = (
   sig: Signature,
   msgHash: bigint,
   pubKey: WeierstrassPoint
-): { T: EdwardsPoint; U: EdwardsPoint } => {
+): { R: EdwardsPoint; T: EdwardsPoint; U: EdwardsPoint } => {
   const Fb = babyjubjub.Fb;
   const Fs = babyjubjub.Fs;
 
   for (let i = 0; i < babyjubjub.cofactor; i++) {
-    // Todo: Use v value from signature
     for (const parity of [0, 1]) {
       const r = Fb.add(sig.r, Fb.mul(BigInt(i), Fs.p));
       const rInv = Fs.inv(r);
-      let R;
+      let rawR;
       try {
-        R = babyjubjub.ec.curve.pointFromX(new BN(r.toString(16), 16), parity);
+        rawR = babyjubjub.ec.curve.pointFromX(
+          new BN(r.toString(16), 16),
+          parity
+        );
       } catch (e) {
         continue;
       }
-      const rawT = R.mul(rInv.toString(16));
+      const rawT = rawR.mul(rInv.toString(16));
       const T = WeierstrassPoint.fromEllipticPoint(rawT);
       const G = babyjubjub.ec.curve.g;
       const rInvm = Fs.neg(Fs.mul(rInv, msgHash));
@@ -96,7 +96,8 @@ export const getPublicInputsFromSignature = (
       const sTU = WeierstrassPoint.fromEllipticPoint(rawsTU);
 
       if (sTU.equals(pubKey)) {
-        return { T: T.toEdwards(), U: U.toEdwards() };
+        const R = WeierstrassPoint.fromEllipticPoint(rawR);
+        return { R: R.toEdwards(), T: T.toEdwards(), U: U.toEdwards() };
       }
     }
   }

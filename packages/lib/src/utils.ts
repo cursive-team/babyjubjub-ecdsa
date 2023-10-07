@@ -25,28 +25,12 @@ export const publicKeyFromString = (pubKey: string): WeierstrassPoint => {
   return new WeierstrassPoint(x, y);
 };
 
-export const hashPublicKey = async (pubKey: string): Promise<bigint> => {
-  const pubKeyPoint = publicKeyFromString(pubKey);
-  const poseidon = await buildPoseidonReference();
-  const hash = poseidon([
-    bigIntToBytes(pubKeyPoint.x),
-    bigIntToBytes(pubKeyPoint.y),
-  ]);
-
-  return hexToBigInt(poseidon.F.toString(hash, 16));
-};
-
 export const hashEdwardsPublicKey = async (
   pubKey: EdwardsPoint
 ): Promise<bigint> => {
   const poseidon = await buildPoseidonReference();
   const hash = poseidon([pubKey.x, pubKey.y]);
   return hexToBigInt(poseidon.F.toString(hash, 16));
-};
-
-export const hashMessage = (msg: string): bigint => {
-  const msgBuffer = Buffer.from(msg);
-  return hexToBigInt(msgBuffer.toString("hex"));
 };
 
 export const hexToBigInt = (hex: string): bigint => {
@@ -68,30 +52,9 @@ export const hexToBytes = (hex: string): Uint8Array => {
   );
 };
 
-export const hexToBytesLE = (hex: string): Uint8Array => {
-  let zeroPaddedHex = hex;
-  if (hex.length % 2 !== 0) {
-    zeroPaddedHex = "0" + hex;
-  }
-
-  return Uint8Array.from(
-    zeroPaddedHex
-      .match(/.{1,2}/g)!
-      .map((byte) => parseInt(byte, 16))
-      .reverse()
-  );
-};
-
 export const bytesToHex = (bytes: Uint8Array): string => {
   return bytes.reduce(
     (str, byte) => str + byte.toString(16).padStart(2, "0"),
-    ""
-  );
-};
-
-export const bytesToHexLE = (bytes: Uint8Array): string => {
-  return bytes.reduce(
-    (str, byte) => byte.toString(16).padStart(2, "0") + str,
     ""
   );
 };
@@ -100,14 +63,10 @@ export const bytesToBigInt = (bytes: Uint8Array): bigint => {
   return hexToBigInt(bytesToHex(bytes));
 };
 
-export const bytesToBigIntLE = (bytes: Uint8Array): bigint => {
-  return hexToBigInt(bytesToHexLE(bytes));
-};
-
 export const bigIntToBytes = (bigInt: bigint): Uint8Array => {
   return hexToBytes(bigIntToHex(bigInt));
 };
 
-export const bigIntToBytesLE = (bigInt: bigint): Uint8Array => {
-  return hexToBytesLE(bigIntToHex(bigInt));
+export const isNode = (): boolean => {
+  return typeof window === "undefined";
 };

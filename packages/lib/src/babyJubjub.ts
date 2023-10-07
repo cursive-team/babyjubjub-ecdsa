@@ -19,7 +19,7 @@ const curveOptions = {
   type: "short",
 };
 
-// Create an elliptic curve with the defined parameters
+// Initialize Babyjubjub curve using short Weierstrass parameters
 const ShortWeierstrassCurve = elliptic.curve.short;
 const curve = new ShortWeierstrassCurve(curveOptions);
 const ec = new elliptic.ec({
@@ -45,6 +45,8 @@ export interface CurvePoint {
   y: bigint;
 
   equals(other: CurvePoint): boolean;
+
+  isInfinity(): boolean;
 
   toString(): string;
 }
@@ -86,16 +88,13 @@ export class WeierstrassPoint implements CurvePoint {
       return EdwardsPoint.infinity();
     }
 
-    const malpha = baseField.div(BigInt(168698), BigInt(3));
-    const mx = baseField.sub(BigInt(this.x.toString()), BigInt(malpha));
-    const my = this.y;
+    const Fb = baseField;
+    const malpha = Fb.div(BigInt(168698), BigInt(3));
+    const mx = BigInt(Fb.sub(BigInt(this.x.toString()), malpha));
+    const my = BigInt(this.y);
 
-    const ex = baseField.div(BigInt(mx), BigInt(my.toString()));
-    const ey = baseField.div(
-      BigInt(baseField.sub(BigInt(mx), BigInt(1))),
-      BigInt(baseField.add(BigInt(mx), BigInt(1)))
-    );
-
+    const ex = Fb.div(mx, my);
+    const ey = Fb.div(Fb.sub(mx, BigInt(1)), Fb.add(mx, BigInt(1)));
     return new EdwardsPoint(ex, ey);
   }
 
@@ -129,7 +128,23 @@ export class EdwardsPoint implements CurvePoint {
   }
 
   toWeierstrass(): WeierstrassPoint {
-    throw new Error("Not implemented");
+    if (this.isInfinity()) {
+      return WeierstrassPoint.infinity();
+    }
+
+    const Fb = baseField;
+    const mA = BigInt(168698);
+    const mB = BigInt(1);
+    const mx = Fb.div(Fb.add(BigInt(1), this.y), Fb.sub(BigInt(1), this.y));
+    const my = Fb.div(
+      Fb.add(BigInt(1), this.y),
+      Fb.mul(Fb.sub(BigInt(1), this.y), this.x)
+    );
+
+    const sx = Fb.div(Fb.add(mx, Fb.div(mA, BigInt(3))), mB);
+    const sy = Fb.div(my, mB);
+
+    return new WeierstrassPoint(sx, sy);
   }
 
   toString(): string {
