@@ -1,5 +1,6 @@
 // @ts-ignore
 import { ZqField } from "ffjavascript";
+import { EdwardsPoint } from "./babyJubjub";
 
 export type BabyJubJub = {
   ec: any;
@@ -13,7 +14,17 @@ export type Signature = {
   s: bigint;
 };
 
-export type MembershipProofInputs = {
+export type EcdsaMembershipProof = {
+  R: EdwardsPoint;
+  msgHash: bigint;
+  T: EdwardsPoint;
+  U: EdwardsPoint;
+  zkp: ZKP;
+};
+
+export type ZKP = { proof: any; publicSignals: string[] };
+
+export type MembershipZKPInputs = {
   s: bigint;
   root: bigint;
   Tx: bigint;
@@ -22,6 +33,7 @@ export type MembershipProofInputs = {
   Uy: bigint;
   pathIndices: number[];
   siblings: bigint[];
+  nullifierRandomness: bigint;
 };
 
 export interface MerkleProof {
@@ -29,5 +41,3 @@ export interface MerkleProof {
   pathIndices: number[];
   siblings: bigint[];
 }
-
-export type ZKP = { proof: string; publicSignals: string };

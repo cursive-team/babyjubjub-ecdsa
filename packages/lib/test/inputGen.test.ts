@@ -23,15 +23,17 @@ describe("merkle tree", () => {
     const index = 2;
     const poseidon = await buildPoseidonReference();
 
-    const merkleProof = await generateMerkleProof(pubKeys, index);
+    const edwardsPubKeys = pubKeys.map((pubKey) => {
+      const weierstrassPubKey = publicKeyFromString(pubKey);
+      return weierstrassPubKey.toEdwards();
+    });
+    const merkleProof = await generateMerkleProof(edwardsPubKeys, index);
 
-    const pubKey = pubKeys[index];
-    const pubKeyWeierstrass = publicKeyFromString(pubKey);
-    const pubKeyEdwards = pubKeyWeierstrass.toEdwards();
-    const leaf = await hashEdwardsPublicKey(pubKeyEdwards);
+    const pubKey = edwardsPubKeys[index];
+    const leaf = await hashEdwardsPublicKey(pubKey);
 
     let node = leaf;
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 8; i++) {
       const otherNode = merkleProof.siblings[i];
       if (merkleProof.pathIndices[i] % 2 === 0) {
         node = poseidon([node, otherNode]);
@@ -42,12 +44,9 @@ describe("merkle tree", () => {
     }
 
     const expectedRoot = BigInt(
-      "4634016523752195062014614389412713184983003254567244385609775692869553859565"
+      "1799182282238172949735919814155076722550339245418717182904975644657694908682"
     );
 
-    console.log(merkleProof.pathIndices);
-    console.log(merkleProof.siblings);
-    console.log(merkleProof.root);
     expect(merkleProof.root).toEqual(expectedRoot);
     expect(node).toEqual(expectedRoot);
   });
@@ -70,6 +69,14 @@ describe("membership proof input generation", () => {
     const pubKey = privateKeyToPublicKey(hexToBigInt(privKey));
 
     const expectedPublicInputs = {
+      R: new EdwardsPoint(
+        BigInt(
+          "8075645473252898128688979041532154315231464270052772524578156004944945352927"
+        ),
+        BigInt(
+          "21767929858584247467164509037192193098074263356282406802085002493233403268316"
+        )
+      ),
       T: new EdwardsPoint(
         BigInt(
           "11796026433945242671642728009981778919257130899633207712788256867701213124641"
@@ -102,6 +109,14 @@ describe("membership proof input generation", () => {
     const pubKey = privateKeyToPublicKey(hexToBigInt(privKey));
 
     const expectedPublicInputs = {
+      R: new EdwardsPoint(
+        BigInt(
+          "14552105131396044845277309825945508777219867648150196861043610899504340270942"
+        ),
+        BigInt(
+          "9792617184027144393319070687714776404335656331668964327930926553772426984001"
+        )
+      ),
       T: new EdwardsPoint(
         BigInt(
           "11049791236506940775725016544774320801686704107093911375737399460678915074436"
@@ -141,6 +156,14 @@ describe("membership proof input generation", () => {
     const pubKey = privateKeyToPublicKey(hexToBigInt(privKey));
 
     const expectedPublicInputs = {
+      R: new EdwardsPoint(
+        BigInt(
+          "1096164456254533177298881739301384521385747197245270057026529270832282192449"
+        ),
+        BigInt(
+          "486637769223247079658498909737625444927555212242810764054518687505963199679"
+        )
+      ),
       T: new EdwardsPoint(
         BigInt(
           "729098367187965354918943799695726574481877310930907216460139273627632312398"

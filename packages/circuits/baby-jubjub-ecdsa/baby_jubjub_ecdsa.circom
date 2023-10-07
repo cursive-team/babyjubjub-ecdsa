@@ -5,7 +5,7 @@ include "../../../node_modules/circomlib/circuits/bitify.circom";
 include "../../../node_modules/circomlib/circuits/escalarmulany.circom";
 
 /**
- *  EfficientECDSA
+ *  BabyJubJubECDSA
  *  ====================
  *  
  *  Converts inputted efficient ECDSA signature to an public key. There is no
@@ -13,7 +13,7 @@ include "../../../node_modules/circomlib/circuits/escalarmulany.circom";
  *  and uses Edwards addition and scalar multiplication. Returns computed
  *  public key in Edwards form.
  */
-template EfficientECDSA() {
+template BabyJubJubECDSA() {
     var bits = 256;
     signal input s;
     signal input Tx; // T = r^-1 * R
