@@ -1,6 +1,6 @@
 {
   "name": "babyjubjub-ecdsa",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "main": "build/lib.js",
   "license": "MIT",
   "dependencies": {
