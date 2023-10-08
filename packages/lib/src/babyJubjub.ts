@@ -80,7 +80,10 @@ export class WeierstrassPoint implements CurvePoint {
       return this.infinity();
     }
 
-    return new WeierstrassPoint(point.getX(), point.getY());
+    return new WeierstrassPoint(
+      BigInt(point.getX().toString(10)),
+      BigInt(point.getY().toString(10))
+    );
   }
 
   toEdwards(): EdwardsPoint {

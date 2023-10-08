@@ -23,6 +23,7 @@ export const verifyEcdsaSignature = (
 
 export const privateKeyToPublicKey = (privKey: bigint): WeierstrassPoint => {
   const pubKeyPoint = babyjubjub.ec.g.mul(privKey.toString(16));
+
   return WeierstrassPoint.fromEllipticPoint(pubKeyPoint);
 };
 

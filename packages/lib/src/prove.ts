@@ -76,9 +76,7 @@ export const batchProveMembership = async (
   }
 
   console.time("Batch Membership Proof Generation");
-  const edwardsPubKeys = await Promise.all(
-    pubKeys.map(async (pubKey) => pubKey.toEdwards())
-  );
+  const edwardsPubKeys = pubKeys.map((pubKey) => pubKey.toEdwards());
 
   const proofs = await Promise.all(
     sigs.map(async (sig, i) => {

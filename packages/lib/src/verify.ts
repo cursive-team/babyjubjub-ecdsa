@@ -122,6 +122,7 @@ export const batchVerifyMembership = async (
       console.time(`ZK Proof Verification: ${i}`);
       const verified = await verifyMembershipZKP(vKey, proof.zkp);
       console.timeEnd(`ZK Proof Verification: ${i}`);
+      console.timeEnd(`Membership Proof Verification: ${i}`);
 
       return verified;
     })
