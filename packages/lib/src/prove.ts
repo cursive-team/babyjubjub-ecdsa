@@ -9,6 +9,18 @@ import { getPublicInputsFromSignature, generateMerkleProof } from "./inputGen";
 import { isNode } from "./utils";
 import { WeierstrassPoint } from "./babyJubjub";
 
+/**
+ * Generates an ECDSA membership proof for a given signature
+ * Proof contains a ZKP as well as information needed for out of circuit verification
+ * @param sig - The signature to generate the proof for
+ * @param pubKeys - The list of public keys comprising the ZKP anonymity set
+ * @param index - The index of the public key that generated the signature
+ * @param msgHash - The hash of the message that was signed
+ * @param nullifierRandomness - Optional nullifier randomness used to generate unique nullifiers
+ * @param pathToCircuits - The path to the circuits directory. Only needed for server side proving
+ * @param hashFn - The hash function to use for the merkle tree. Defaults to Poseidon
+ * @returns - The membership proof
+ */
 export const proveMembership = async (
   sig: Signature,
   pubKeys: WeierstrassPoint[],
@@ -46,6 +58,9 @@ export const proveMembership = async (
   const zkp = await generateMembershipZKP(proofInputs, pathToCircuits);
   console.timeEnd("ZK Proof Generation");
 
+  // snarkjs will not terminate this object automatically
+  // We should do so after all proving/verification is finished for caching purposes
+  // See: https://github.com/iden3/snarkjs/issues/152
   // @ts-ignore
   await globalThis.curve_bn128.terminate();
   console.timeEnd("Membership Proof Generation");
@@ -59,6 +74,18 @@ export const proveMembership = async (
   };
 };
 
+/**
+ * Generates ECDSA membership proofs for a list of signatures
+ * Can only be used for the same list of public keys and fixed nullifier randomness
+ * @param sigs - The list of signatures to generate proofs for
+ * @param pubKeys - The list of public keys comprising the ZKP anonymity set
+ * @param indexes - The list of indexes corresponding to the public keys that generated the signatures
+ * @param msgHashes - The list of message hashes corresponding to the messages that were signed
+ * @param nullifierRandomness - Optional nullifier randomness used to generate unique nullifiers
+ * @param pathToCircuits - The path to the circuits directory. Only needed for server side proving
+ * @param hashFn - The hash function to use for the merkle tree. Defaults to Poseidon
+ * @returns - The list of membership proofs
+ */
 export const batchProveMembership = async (
   sigs: Signature[],
   pubKeys: WeierstrassPoint[],
@@ -123,6 +150,9 @@ export const batchProveMembership = async (
     })
   );
 
+  // snarkjs will not terminate this object automatically
+  // We should do so after all proving/verification is finished for caching purposes
+  // See: https://github.com/iden3/snarkjs/issues/152
   // @ts-ignore
   await globalThis.curve_bn128.terminate();
   console.timeEnd("Batch Membership Proof Generation");
@@ -130,6 +160,12 @@ export const batchProveMembership = async (
   return proofs;
 };
 
+/**
+ * Generate a ZKP for a membership proof
+ * @param proofInputs - The inputs to the membership proof circuit
+ * @param pathToCircuits - The path to the circuits directory. Only needed for server side proving
+ * @returns - The membership ZKP
+ */
 export const generateMembershipZKP = async (
   proofInputs: MembershipZKPInputs,
   pathToCircuits: string | undefined = undefined
@@ -140,6 +176,7 @@ export const generateMembershipZKP = async (
     );
   }
 
+  // For client side proving, we can retrieve circuits from cloud storage
   const wasmPath = isNode()
     ? pathToCircuits + "pubkey_membership.wasm"
     : "https://storage.googleapis.com/jubmoji-circuits/pubkey_membership.wasm";

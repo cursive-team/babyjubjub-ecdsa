@@ -1,11 +1,17 @@
 import { batchProveMembership, proveMembership } from "../src/prove";
-import { batchVerifyMembership, verifyMembership } from "../src/verify";
+import {
+  batchVerifyMembership,
+  getNullifierFromMembershipProof,
+  verifyMembership,
+} from "../src/verify";
 import { derDecode, hexToBigInt, publicKeyFromString } from "../src/utils";
 import { WeierstrassPoint } from "../src/babyJubjub";
 
-describe("zero knowledge proof generation and verification", () => {
+// Tests membership proof generation and verification, including zkp proving and verification
+describe("ECDSA membership proof generation and verification", () => {
   const pathToCircuits = process.cwd() + "/test/circuits/";
 
+  // Tests based on pre-generated BabyJubjub ECDSA signatures
   describe("generate and verify membership proofs", () => {
     const pubKeys = [
       "041941f5abe4f903af965d707182b688bd1fa725fd2cbc648fc435feb42a3794593275a2e9b4ad4bc0d2f3ecc8d23e3cf89da889d7aa35ce33f132d87b5bb5c393",
@@ -16,37 +22,38 @@ describe("zero knowledge proof generation and verification", () => {
     const pubKeyPoints = pubKeys.map(publicKeyFromString);
     const nullifierRandomness = BigInt(0);
 
-    // test("should generate and verify a membership proof 0", async () => {
-    //   const msgHash = BigInt("0");
-    //   const sig = {
-    //     r: hexToBigInt(
-    //       "00EF7145470CEC0B683C629CBA8ED58110000FFE657366F7D5A91F2D149DD8B5"
-    //     ),
-    //     s: hexToBigInt(
-    //       "0370C60A23266F520C56DA088B4C4AFAAAF6BB1993A501980F6D8FB6F343984A"
-    //     ),
-    //   };
+    test("should generate and verify a membership proof 0", async () => {
+      const msgHash = BigInt("0");
+      const sig = {
+        r: hexToBigInt(
+          "00EF7145470CEC0B683C629CBA8ED58110000FFE657366F7D5A91F2D149DD8B5"
+        ),
+        s: hexToBigInt(
+          "0370C60A23266F520C56DA088B4C4AFAAAF6BB1993A501980F6D8FB6F343984A"
+        ),
+      };
 
-    //   const proof = await proveMembership(
-    //     sig,
-    //     pubKeyPoints,
-    //     2,
-    //     msgHash,
-    //     nullifierRandomness,
-    //     pathToCircuits
-    //   );
+      const proof = await proveMembership(
+        sig,
+        pubKeyPoints,
+        2,
+        msgHash,
+        nullifierRandomness,
+        pathToCircuits
+      );
 
-    //   const verified = await verifyMembership(
-    //     proof,
-    //     pubKeyPoints,
-    //     nullifierRandomness,
-    //     pathToCircuits
-    //   );
+      const verified = await verifyMembership(
+        proof,
+        pubKeyPoints,
+        nullifierRandomness,
+        pathToCircuits
+      );
 
-    //   expect(verified).toBe(true);
-    // });
+      expect(verified).toBe(true);
+    });
   });
 
+  // Tests based on pre-generated BabyJubjub ECDSA signatures
   describe("generate and verify membership proofs with encoded signatures and nullifier randomness", () => {
     const pubKeys = [
       new WeierstrassPoint(
@@ -87,53 +94,53 @@ describe("zero knowledge proof generation and verification", () => {
     );
     const nullifierRandomness = BigInt("420420420");
 
-    // test("should generate and verify a membership proof with encoded signatures and nullifier randomness 0", async () => {
-    //   const encodedSig =
-    //     "30440220036E3AD3E9358B8299A60150BB925DEF60519861DB29E6468366ABE441F04C71022003872AABF9BE3935EF255FDB847A09E1789990BE85C3C368589D7693D0E5B36F";
-    //   const sig = derDecode(encodedSig);
+    test("should generate and verify a membership proof with encoded signatures and nullifier randomness 0", async () => {
+      const encodedSig =
+        "30440220036E3AD3E9358B8299A60150BB925DEF60519861DB29E6468366ABE441F04C71022003872AABF9BE3935EF255FDB847A09E1789990BE85C3C368589D7693D0E5B36F";
+      const sig = derDecode(encodedSig);
 
-    //   const proof = await proveMembership(
-    //     sig,
-    //     pubKeys,
-    //     1,
-    //     msgHash,
-    //     nullifierRandomness,
-    //     pathToCircuits
-    //   );
+      const proof = await proveMembership(
+        sig,
+        pubKeys,
+        1,
+        msgHash,
+        nullifierRandomness,
+        pathToCircuits
+      );
 
-    //   const verified = await verifyMembership(
-    //     proof,
-    //     pubKeys,
-    //     nullifierRandomness,
-    //     pathToCircuits
-    //   );
+      const verified = await verifyMembership(
+        proof,
+        pubKeys,
+        nullifierRandomness,
+        pathToCircuits
+      );
 
-    //   expect(verified).toBe(true);
-    // });
+      expect(verified).toBe(true);
+    });
 
-    // test("should generate and verify a membership proof with encoded signatures and nullifier randomness 1", async () => {
-    //   const encodedSig =
-    //     "30440220050AFA65DFD6E8709364DCF739FBAF2D6B436F84ADD5296BEE38BC65FA116912022001E8390CB9EF3688E2F319C0D08BB5DC11442BA9A93453660CD86B3728D0C106";
-    //   const sig = derDecode(encodedSig);
+    test("should generate and verify a membership proof with encoded signatures and nullifier randomness 1", async () => {
+      const encodedSig =
+        "30440220050AFA65DFD6E8709364DCF739FBAF2D6B436F84ADD5296BEE38BC65FA116912022001E8390CB9EF3688E2F319C0D08BB5DC11442BA9A93453660CD86B3728D0C106";
+      const sig = derDecode(encodedSig);
 
-    //   const proof = await proveMembership(
-    //     sig,
-    //     pubKeys,
-    //     2,
-    //     msgHash,
-    //     nullifierRandomness,
-    //     pathToCircuits
-    //   );
+      const proof = await proveMembership(
+        sig,
+        pubKeys,
+        2,
+        msgHash,
+        nullifierRandomness,
+        pathToCircuits
+      );
 
-    //   const verified = await verifyMembership(
-    //     proof,
-    //     pubKeys,
-    //     nullifierRandomness,
-    //     pathToCircuits
-    //   );
+      const verified = await verifyMembership(
+        proof,
+        pubKeys,
+        nullifierRandomness,
+        pathToCircuits
+      );
 
-    //   expect(verified).toBe(true);
-    // });
+      expect(verified).toBe(true);
+    });
 
     test("should batch generate and verify membership proofs with encoded signatures and nullifier randomness", async () => {
       const encodedSigs = [
@@ -163,6 +170,47 @@ describe("zero knowledge proof generation and verification", () => {
       );
 
       expect(verified).toBe(true);
+    });
+  });
+
+  // Tests recovery of nullifier from membership proof
+  describe("recover nullifier from proof", () => {
+    test("should recover the correct nullifier", async () => {
+      const pubKeys = [
+        "041941f5abe4f903af965d707182b688bd1fa725fd2cbc648fc435feb42a3794593275a2e9b4ad4bc0d2f3ecc8d23e3cf89da889d7aa35ce33f132d87b5bb5c393",
+        "049ae9f2ec6a4db43f0e081a436f885b0d3f5753a45b00d2f2e3da38956848c4ff0205d89e14a2e36976bfe033407dbce6b48261d84d201277de0c3b82f08ddb09",
+        "041052d6da0c3d7248e39e08912e2daa53c4e54cd9f2d96e3702fa15e77b199a501cd835bbddcc77134dc59dbbde2aa702183a68c90877906a31536eef972fac36",
+        "044d9d03f3266f24777ac488f04ec579e1c4bea984398c9b98d99a9e31bc75ef0f13a19471a7297a6f2bf0126ed93d4c55b6e98ec286203e3d761c61922e3a4cda",
+      ];
+      const pubKeyPoints = pubKeys.map(publicKeyFromString);
+      const nullifierRandomness = BigInt(0);
+
+      const msgHash = BigInt("0");
+      const sig = {
+        r: hexToBigInt(
+          "00EF7145470CEC0B683C629CBA8ED58110000FFE657366F7D5A91F2D149DD8B5"
+        ),
+        s: hexToBigInt(
+          "0370C60A23266F520C56DA088B4C4AFAAAF6BB1993A501980F6D8FB6F343984A"
+        ),
+      };
+
+      const proof = await proveMembership(
+        sig,
+        pubKeyPoints,
+        2,
+        msgHash,
+        nullifierRandomness,
+        pathToCircuits
+      );
+
+      const recoveredNullifier = getNullifierFromMembershipProof(proof);
+
+      const expectedNullifier = BigInt(
+        "17825334909698573620993222371821585663772073121519814540615199066752100895281"
+      );
+
+      expect(recoveredNullifier).toEqual(expectedNullifier);
     });
   });
 });
