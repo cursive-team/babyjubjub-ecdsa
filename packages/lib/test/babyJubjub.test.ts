@@ -1,5 +1,6 @@
 import { EdwardsPoint, WeierstrassPoint } from "../src/babyJubjub";
 
+// Basic tests for converting between BabyJubjub points in Weierstrass and Edwards form
 describe("baby jubjub curve definition", () => {
   test("should correctly convert between weierstrass and edwards points 0", () => {
     const weierstrassPoint = new WeierstrassPoint(

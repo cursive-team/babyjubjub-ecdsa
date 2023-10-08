@@ -3,6 +3,11 @@ import { Signature } from "./types";
 // @ts-ignore
 import { buildPoseidonReference } from "circomlibjs";
 
+/**
+ * DER decodes a signature
+ * @param encodedSig - The encoded signature
+ * @returns - The decoded signature
+ */
 export const derDecode = (encodedSig: string): Signature => {
   const r_length = parseInt(encodedSig.slice(6, 8), 16) * 2; // Multiply by 2 to get length in hex characters
   const s_length =
@@ -14,6 +19,12 @@ export const derDecode = (encodedSig: string): Signature => {
   return { r: hexToBigInt(r), s: hexToBigInt(s) };
 };
 
+/**
+ * Converts a public key in hex form to a WeierstrassPoint
+ * Reference for key format: https://en.bitcoin.it/wiki/Elliptic_Curve_Digital_Signature_Algorithm
+ * @param pubKey - The public key in hex form
+ * @returns The public key in Weierstrass form
+ */
 export const publicKeyFromString = (pubKey: string): WeierstrassPoint => {
   if (pubKey.slice(0, 2) !== "04") {
     throw new Error("Only handle uncompressed public keys for now");
@@ -25,6 +36,11 @@ export const publicKeyFromString = (pubKey: string): WeierstrassPoint => {
   return new WeierstrassPoint(x, y);
 };
 
+/**
+ * Hashes an EdwardsPoint to a bigint. Uses the Poseidon hash function
+ * @param pubKey - The public key to hash
+ * @returns The hash of the public key
+ */
 export const hashEdwardsPublicKey = async (
   pubKey: EdwardsPoint
 ): Promise<bigint> => {

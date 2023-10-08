@@ -13,6 +13,10 @@ import { EdwardsPoint, WeierstrassPoint } from "../src/babyJubjub";
 // @ts-ignore
 import { buildPoseidonReference } from "circomlibjs";
 
+// All magic expected values are based on a combination of values
+// derived from a Python implementation of the same functions:
+// https://github.com/AndrewCLu/baby-jubjub as well as pre-generated
+// values of BabyJubjub ECDSA signatures and keys
 describe("signature and key parsing utilities", () => {
   test("should DER decode a signature 0", () => {
     const encodedSig =

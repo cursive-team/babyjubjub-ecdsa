@@ -75,6 +75,7 @@ export class WeierstrassPoint implements CurvePoint {
     return this.x === BigInt(0) && this.y === BigInt(0);
   }
 
+  // Converts from an elliptic.js curve point to a WeierstrassPoint
   static fromEllipticPoint(point: any): WeierstrassPoint {
     if (point.isInfinity()) {
       return this.infinity();
@@ -86,6 +87,7 @@ export class WeierstrassPoint implements CurvePoint {
     );
   }
 
+  // Based on conversion formulae: https://www-fourier.univ-grenoble-alpes.fr/mphell/doc-v5/conversion_weierstrass_edwards.html
   toEdwards(): EdwardsPoint {
     if (this.isInfinity()) {
       return EdwardsPoint.infinity();
@@ -130,6 +132,7 @@ export class EdwardsPoint implements CurvePoint {
     return this.x === BigInt(0) && this.y === BigInt(1);
   }
 
+  // Based on conversion formulae: https://www-fourier.univ-grenoble-alpes.fr/mphell/doc-v5/conversion_weierstrass_edwards.html
   toWeierstrass(): WeierstrassPoint {
     if (this.isInfinity()) {
       return WeierstrassPoint.infinity();

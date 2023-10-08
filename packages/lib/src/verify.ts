@@ -5,6 +5,17 @@ import { computeMerkleRoot } from "./inputGen";
 import { EcdsaMembershipProof, ZKP } from "./types";
 import { isNode } from "./utils";
 
+/**
+ * Verifies an ECDSA membership proof
+ * Performs in circuit and out of circuit verification
+ * Based on the Efficient ECDSA formulation: https://personaelabs.org/posts/efficient-ecdsa-1/
+ * Does not check/maintain the list of usedNullifiers, this must be done by the caller
+ * @param proof - The membership proof to verify
+ * @param pubKeys - The list of public keys comprising the anonymity set for the proof
+ * @param nullifierRandomness - Optional nullifier randomness used to generate unique nullifiers
+ * @param pathToCircuits - The path to the verification key. Only needed for server side verification
+ * @returns - A boolean indicating whether or not the proof is valid
+ */
 export const verifyMembership = async (
   proof: EcdsaMembershipProof,
   pubKeys: WeierstrassPoint[],
@@ -56,6 +67,9 @@ export const verifyMembership = async (
   const verified = await verifyMembershipZKP(vKey, proof.zkp);
   console.timeEnd("ZK Proof Verification");
 
+  // snarkjs will not terminate this object automatically
+  // We should do so after all proving/verification is finished for caching purposes
+  // See: https://github.com/iden3/snarkjs/issues/152
   // @ts-ignore
   await globalThis.curve_bn128.terminate();
   console.timeEnd("Membership Proof Verification");
@@ -63,6 +77,17 @@ export const verifyMembership = async (
   return verified;
 };
 
+/**
+ * Verifies a batch of ECDSA membership proofs
+ * Must be used with the same list of public keys and nullifier randomness
+ * Based on the Efficient ECDSA formulation: https://personaelabs.org/posts/efficient-ecdsa-1/
+ * Does not check/maintain the list of usedNullifiers, this must be done by the caller
+ * @param proofs - The membership proofs to verify
+ * @param pubKeys - The list of public keys comprising the anonymity set for the proof
+ * @param nullifierRandomness - Optional nullifier randomness used to generate unique nullifiers
+ * @param pathToCircuits - The path to the verification key. Only needed for server side verification
+ * @returns - A boolean indicating whether or not all of the proofs are valid
+ */
 export const batchVerifyMembership = async (
   proofs: EcdsaMembershipProof[],
   pubKeys: WeierstrassPoint[],
@@ -128,6 +153,9 @@ export const batchVerifyMembership = async (
     })
   );
 
+  // snarkjs will not terminate this object automatically
+  // We should do so after all proving/verification is finished for caching purposes
+  // See: https://github.com/iden3/snarkjs/issues/152
   // @ts-ignore
   await globalThis.curve_bn128.terminate();
   console.timeEnd("Batch Membership Proof Verification");
@@ -137,6 +165,14 @@ export const batchVerifyMembership = async (
   return verified.every((v) => v);
 };
 
+/**
+ * Recovers public parameters T, U of the membership proof based on the provided R value
+ * This ensures that T, U were generated appropriately
+ * See: https://hackmd.io/HQZxucnhSGKT_VfNwB6wOw?view
+ * @param R - The R value of the membership proof
+ * @param msgHash - The hash of the message signed by the signature
+ * @returns - The public parameters T, U
+ */
 export const recoverTUFromProof = async (
   R: EdwardsPoint,
   msgHash: bigint
@@ -154,17 +190,39 @@ export const recoverTUFromProof = async (
   const T = WeierstrassPoint.fromEllipticPoint(ecT);
   const G = babyjubjub.ec.curve.g;
   const rInvm = Fs.neg(Fs.mul(rInv, msgHash));
-  const rawU = G.mul(rInvm.toString(16));
-  const U = WeierstrassPoint.fromEllipticPoint(rawU);
+  const ecU = G.mul(rInvm.toString(16));
+  const U = WeierstrassPoint.fromEllipticPoint(ecU);
 
   return { T: T.toEdwards(), U: U.toEdwards() };
 };
 
+/**
+ * Verifies a zero knowledge proof for a membership proof
+ * @param vkey - The verification key for the membership proof
+ * @param proof - The zero knowledge proof to verify
+ * @param publicInputs - The public inputs to the zero knowledge proof
+ * @returns - A boolean indicating whether or not the proof is valid
+ */
 export const verifyMembershipZKP = async (
   vKey: any,
   { proof, publicSignals }: ZKP
 ): Promise<boolean> => {
   return await snarkjs.groth16.verify(vKey, publicSignals, proof);
+};
+
+/**
+ * Gets the nullifier from an ECDSA membership proof
+ * Extracts the nullifier from the membership proof's zero knowledge proof's public inputs
+ * Should be used to enforce that nullifiers are unique
+ * @param proof - The membership proof to get the nullifier from
+ * @returns - The nullifier as a bigint
+ */
+export const getNullifierFromMembershipProof = (
+  proof: EcdsaMembershipProof
+): bigint => {
+  const publicSignals = proof.zkp.publicSignals;
+
+  return BigInt(publicSignals[0]);
 };
 
 const getVerificationKeyFromFile = async (

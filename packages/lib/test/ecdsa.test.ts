@@ -6,6 +6,10 @@ import {
 } from "../src/ecdsa";
 import { hexToBigInt, publicKeyFromString } from "../src/utils";
 
+// Note for all ecdsa tests: the magic expected values are generated from
+// a Python implementation of BabyJubjub ECDSA: https://github.com/AndrewCLu/baby-jubjub
+// This implementation itself is based on many different EC and ECDSA formulae around the web
+// Tests BabyJubjub ECDSA signature verification in Javascript
 describe("javascript signature verification", () => {
   test("should verify a baby jubjub ecdsa signature 0", () => {
     const privKey =
@@ -62,6 +66,7 @@ describe("javascript signature verification", () => {
   });
 });
 
+// Tests BabyJubjub ECDSA public key recovery in Javascript
 describe("ecdsa public key recovery", () => {
   it("should recover the correct public key index", () => {
     const pubKeys = [
@@ -142,6 +147,7 @@ describe("ecdsa public key recovery", () => {
   });
 });
 
+// Tests conversion between ECDSA private keys and public keys
 describe("private to public key conversion", () => {
   test("should convert a private key to a public key 0", () => {
     const privKey =

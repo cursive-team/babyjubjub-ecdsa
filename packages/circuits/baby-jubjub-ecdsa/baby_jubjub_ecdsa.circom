@@ -17,11 +17,11 @@ template BabyJubJubECDSA() {
     var bits = 256;
     signal input s;
     signal input Tx; // T = r^-1 * R
-    signal input Ty; 
+    signal input Ty; // T is represented in Twisted Edwards form
     signal input Ux; // U = -(m * r^-1 * G)
-    signal input Uy;
+    signal input Uy; // U is represented in Twisted Edwards form
 
-    signal output pubKeyX;
+    signal output pubKeyX; // Represented in Twisted Edwards form
     signal output pubKeyY;
 
     // bitify s

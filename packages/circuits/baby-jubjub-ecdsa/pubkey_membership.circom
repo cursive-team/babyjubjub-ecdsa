@@ -12,7 +12,8 @@ include "../../../node_modules/circomlib/circuits/poseidon.circom";
  *  can be found at https://personaelabs.org/posts/efficient-ecdsa-1/) 
  *  is signed by a public key that is in a Merkle tree of public keys. Avoids the
  *  SNARK-unfriendly Keccak hash that must be performed when validating if the 
- *  public key is in a Merkle tree of addresses.
+ *  public key is in a Merkle tree of addresses. Generates a nullifier as a hash of
+ *  the signature s value and a nullifierRandomness parameter. 
  */
 template PubKeyMembership(nLevels) {
     signal input s;
