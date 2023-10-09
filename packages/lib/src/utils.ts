@@ -1,5 +1,5 @@
 import { EdwardsPoint, WeierstrassPoint } from "./babyJubjub";
-import { Signature } from "./types";
+import { EcdsaMembershipProof, Signature } from "./types";
 // @ts-ignore
 import { buildPoseidonReference } from "circomlibjs";
 
@@ -47,6 +47,31 @@ export const hashEdwardsPublicKey = async (
   const poseidon = await buildPoseidonReference();
   const hash = poseidon([pubKey.x, pubKey.y]);
   return hexToBigInt(poseidon.F.toString(hash, 16));
+};
+
+export const serializeEcdsaMembershipProof = (
+  proof: EcdsaMembershipProof
+): string => {
+  const R = proof.R.serialize();
+  const msgHash = bigIntToHex(proof.msgHash);
+  const T = proof.T.serialize();
+  const U = proof.U.serialize();
+  const zkp = proof.zkp;
+
+  return JSON.stringify({ R, msgHash, T, U, zkp });
+};
+
+export const deserializeEcdsaMembershipProof = (
+  serializedProof: string
+): EcdsaMembershipProof => {
+  const proof = JSON.parse(serializedProof);
+  const R = EdwardsPoint.deserialize(proof.R);
+  const msgHash = hexToBigInt(proof.msgHash);
+  const T = EdwardsPoint.deserialize(proof.T);
+  const U = EdwardsPoint.deserialize(proof.U);
+  const zkp = proof.zkp;
+
+  return { R, msgHash, T, U, zkp };
 };
 
 export const hexToBigInt = (hex: string): bigint => {

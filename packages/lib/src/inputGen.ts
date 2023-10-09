@@ -16,7 +16,7 @@ import { hashEdwardsPublicKey, hexToBigInt } from "./utils";
  */
 export const computeMerkleRoot = async (
   pubKeys: EdwardsPoint[],
-  hashFn: any | undefined = undefined
+  hashFn: any = undefined
 ): Promise<bigint> => {
   const proof = await generateMerkleProof(pubKeys, 0, hashFn);
   return proof.root;
@@ -33,7 +33,7 @@ export const computeMerkleRoot = async (
 export const generateMerkleProof = async (
   pubKeys: EdwardsPoint[],
   index: number,
-  hashFn: any | undefined = undefined
+  hashFn: any = undefined
 ): Promise<MerkleProof> => {
   const TREE_DEPTH = 8; // We used a fixed depth merkle tree for now
   // Precomputed hashes of zero for each layer of the merkle tree

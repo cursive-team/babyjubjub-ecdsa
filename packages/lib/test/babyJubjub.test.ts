@@ -79,4 +79,36 @@ describe("baby jubjub curve definition", () => {
     expect(edwardsPoint.toWeierstrass()).toEqual(weierstrassPoint);
     expect(weierstrassPoint.toEdwards()).toEqual(edwardsPoint);
   });
+
+  test("should serialize and deserialize weierstrass points correctly", () => {
+    const weierstrassPoint = new WeierstrassPoint(
+      BigInt(
+        "4561812309240861642917635986636818826442846353062159251237759819544681210360"
+      ),
+      BigInt(
+        "4047434573331865975122957359703219020835673338643881982088616311845542612717"
+      )
+    );
+
+    const serialized = weierstrassPoint.serialize();
+    const deserialized = WeierstrassPoint.deserialize(serialized);
+
+    expect(deserialized).toEqual(weierstrassPoint);
+  });
+
+  test("should serialize and deserialize edwards points correctly", () => {
+    const edwardsPoint = new EdwardsPoint(
+      BigInt(
+        "11049791236506940775725016544774320801686704107093911375737399460678915074436"
+      ),
+      BigInt(
+        "14122061015030538160275787174689078850141853547608413074819581224165574773574"
+      )
+    );
+
+    const serialized = edwardsPoint.serialize();
+    const deserialized = EdwardsPoint.deserialize(serialized);
+
+    expect(deserialized).toEqual(edwardsPoint);
+  });
 });

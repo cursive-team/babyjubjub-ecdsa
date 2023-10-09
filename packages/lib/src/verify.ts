@@ -14,13 +14,15 @@ import { isNode } from "./utils";
  * @param pubKeys - The list of public keys comprising the anonymity set for the proof
  * @param nullifierRandomness - Optional nullifier randomness used to generate unique nullifiers
  * @param pathToCircuits - The path to the verification key. Only needed for server side verification
+ * @param hashFn - The hash function to use for the merkle tree. Defaults to Poseidon
  * @returns - A boolean indicating whether or not the proof is valid
  */
 export const verifyMembership = async (
   proof: EcdsaMembershipProof,
   pubKeys: WeierstrassPoint[],
   nullifierRandomness: bigint = BigInt(0),
-  pathToCircuits: string | undefined = undefined
+  pathToCircuits: string | undefined = undefined,
+  hashFn: any = undefined
 ): Promise<boolean> => {
   if (isNode() && pathToCircuits === undefined) {
     throw new Error(
@@ -33,7 +35,7 @@ export const verifyMembership = async (
   const publicSignals = proof.zkp.publicSignals;
   const merkleRoot = BigInt(publicSignals[1]);
   const edwardsPubKeys = pubKeys.map((pubKey) => pubKey.toEdwards());
-  const computedMerkleRoot = await computeMerkleRoot(edwardsPubKeys);
+  const computedMerkleRoot = await computeMerkleRoot(edwardsPubKeys, hashFn);
   if (computedMerkleRoot !== merkleRoot) {
     return false;
   }
@@ -86,13 +88,15 @@ export const verifyMembership = async (
  * @param pubKeys - The list of public keys comprising the anonymity set for the proof
  * @param nullifierRandomness - Optional nullifier randomness used to generate unique nullifiers
  * @param pathToCircuits - The path to the verification key. Only needed for server side verification
+ * @param hashFn - The hash function to use for the merkle tree. Defaults to Poseidon
  * @returns - A boolean indicating whether or not all of the proofs are valid
  */
 export const batchVerifyMembership = async (
   proofs: EcdsaMembershipProof[],
   pubKeys: WeierstrassPoint[],
   nullifierRandomness: bigint = BigInt(0),
-  pathToCircuits: string | undefined = undefined
+  pathToCircuits: string | undefined = undefined,
+  hashFn: any = undefined
 ): Promise<boolean> => {
   if (isNode() && pathToCircuits === undefined) {
     throw new Error(
@@ -103,7 +107,7 @@ export const batchVerifyMembership = async (
   console.time("Batch Membership Proof Verification");
   console.time("Batch Merkle Root Computation");
   const edwardsPubKeys = pubKeys.map((pubKey) => pubKey.toEdwards());
-  const computedMerkleRoot = await computeMerkleRoot(edwardsPubKeys);
+  const computedMerkleRoot = await computeMerkleRoot(edwardsPubKeys, hashFn);
   console.timeEnd("Batch Merkle Root Computation");
 
   console.time("Fetching Verification Key");

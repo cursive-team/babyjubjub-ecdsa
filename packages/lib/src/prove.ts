@@ -28,7 +28,7 @@ export const proveMembership = async (
   msgHash: bigint,
   nullifierRandomness: bigint = BigInt(0),
   pathToCircuits: string | undefined = undefined,
-  hashFn: any | undefined = undefined
+  hashFn: any = undefined
 ): Promise<EcdsaMembershipProof> => {
   console.time("Membership Proof Generation");
   console.time("T and U Generation");
@@ -93,7 +93,7 @@ export const batchProveMembership = async (
   msgHashes: bigint[],
   nullifierRandomness: bigint = BigInt(0),
   pathToCircuits: string | undefined = undefined,
-  hashFn: any | undefined = undefined
+  hashFn: any = undefined
 ): Promise<EcdsaMembershipProof[]> => {
   const numProofs = sigs.length;
   if (numProofs !== indexes.length || numProofs !== msgHashes.length) {
