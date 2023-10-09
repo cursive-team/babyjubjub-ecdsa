@@ -3,6 +3,7 @@ import * as hash from "hash.js";
 // @ts-ignore
 import { ZqField } from "ffjavascript";
 import { BabyJubJub } from "./types";
+import { bigIntToHex, hexToBigInt } from "./utils";
 
 // Define short Weierstrass parameters
 const curveOptions = {
@@ -106,6 +107,18 @@ export class WeierstrassPoint implements CurvePoint {
   toString(): string {
     return `Weierstrass: (${this.x.toString()}, ${this.y.toString()})`;
   }
+
+  serialize(): string {
+    return JSON.stringify({
+      x: bigIntToHex(this.x),
+      y: bigIntToHex(this.y),
+    });
+  }
+
+  static deserialize(serialized: string): WeierstrassPoint {
+    const { x, y } = JSON.parse(serialized);
+    return new WeierstrassPoint(hexToBigInt(x), hexToBigInt(y));
+  }
 }
 
 export class EdwardsPoint implements CurvePoint {
@@ -155,5 +168,17 @@ export class EdwardsPoint implements CurvePoint {
 
   toString(): string {
     return `Edwards: (${this.x.toString()}, ${this.y.toString()})`;
+  }
+
+  serialize(): string {
+    return JSON.stringify({
+      x: bigIntToHex(this.x),
+      y: bigIntToHex(this.y),
+    });
+  }
+
+  static deserialize(serialized: string): EdwardsPoint {
+    const { x, y } = JSON.parse(serialized);
+    return new EdwardsPoint(hexToBigInt(x), hexToBigInt(y));
   }
 }
