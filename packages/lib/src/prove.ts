@@ -57,12 +57,6 @@ export const proveMembership = async (
   };
   const zkp = await generateMembershipZKP(proofInputs, pathToCircuits);
   console.timeEnd("ZK Proof Generation");
-
-  // snarkjs will not terminate this object automatically
-  // We should do so after all proving/verification is finished for caching purposes
-  // See: https://github.com/iden3/snarkjs/issues/152
-  // @ts-ignore
-  await globalThis.curve_bn128.terminate();
   console.timeEnd("Membership Proof Generation");
 
   return {
@@ -149,12 +143,6 @@ export const batchProveMembership = async (
       };
     })
   );
-
-  // snarkjs will not terminate this object automatically
-  // We should do so after all proving/verification is finished for caching purposes
-  // See: https://github.com/iden3/snarkjs/issues/152
-  // @ts-ignore
-  await globalThis.curve_bn128.terminate();
   console.timeEnd("Batch Membership Proof Generation");
 
   return proofs;

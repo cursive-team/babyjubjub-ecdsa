@@ -11,6 +11,14 @@ import { WeierstrassPoint } from "../src/babyJubjub";
 
 // Tests membership proof generation and verification, including zkp proving and verification
 describe("ECDSA membership proof generation and verification", () => {
+  afterAll(async () => {
+    // snarkjs will not terminate this object automatically
+    // We should do so after all proving/verification is finished for caching purposes
+    // See: https://github.com/iden3/snarkjs/issues/152
+    // @ts-ignore
+    await globalThis.curve_bn128.terminate();
+  });
+
   const pathToCircuits = process.cwd() + "/test/circuits/";
 
   // Tests based on pre-generated BabyJubjub ECDSA signatures
@@ -235,10 +243,6 @@ describe("ECDSA membership proof generation and verification", () => {
       };
 
       const verified = await verifyMembershipZKP(vKey, zkp);
-
-      // @ts-ignore
-      await globalThis.curve_bn128.terminate();
-      console.timeEnd("Batch Membership Proof Verification");
 
       expect(verified).toBe(true);
     });

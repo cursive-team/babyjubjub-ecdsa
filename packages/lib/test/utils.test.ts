@@ -164,6 +164,12 @@ describe("signature and key parsing utilities", () => {
     expect(deserializedProof.T.equals(proof.T)).toBe(true);
     expect(deserializedProof.U.equals(proof.U)).toBe(true);
     expect(deserializedProof.zkp).toEqual(proof.zkp);
+
+    // snarkjs will not terminate this object automatically
+    // We should do so after all proving/verification is finished for caching purposes
+    // See: https://github.com/iden3/snarkjs/issues/152
+    // @ts-ignore
+    await globalThis.curve_bn128.terminate();
   });
 
   test("poseidon reference is correct 0", async () => {

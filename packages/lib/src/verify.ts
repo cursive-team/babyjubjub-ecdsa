@@ -68,12 +68,6 @@ export const verifyMembership = async (
   console.time("ZK Proof Verification");
   const verified = await verifyMembershipZKP(vKey, proof.zkp);
   console.timeEnd("ZK Proof Verification");
-
-  // snarkjs will not terminate this object automatically
-  // We should do so after all proving/verification is finished for caching purposes
-  // See: https://github.com/iden3/snarkjs/issues/152
-  // @ts-ignore
-  await globalThis.curve_bn128.terminate();
   console.timeEnd("Membership Proof Verification");
 
   return verified;
@@ -156,12 +150,6 @@ export const batchVerifyMembership = async (
       return verified;
     })
   );
-
-  // snarkjs will not terminate this object automatically
-  // We should do so after all proving/verification is finished for caching purposes
-  // See: https://github.com/iden3/snarkjs/issues/152
-  // @ts-ignore
-  await globalThis.curve_bn128.terminate();
   console.timeEnd("Batch Membership Proof Verification");
 
   // Could rewrite this to short circuit if any are false verifications,
