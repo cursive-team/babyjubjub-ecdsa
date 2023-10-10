@@ -1,5 +1,6 @@
 import { WeierstrassPoint } from "../src/babyJubjub";
 import {
+  computeTUFromR,
   privateKeyToPublicKey,
   recoverPubKeyIndexFromSignature,
   verifyEcdsaSignature,
@@ -215,5 +216,42 @@ describe("private to public key conversion", () => {
     );
 
     expect(pubKey).toEqual(expectedPubKey);
+  });
+});
+
+// These examples are taken from the BabyJubjub ECDSA Python implementation
+describe("efficient ecdsa utils", () => {
+  test("should convert R and a message hash to T and U correctly", () => {
+    const R = new WeierstrassPoint(
+      BigInt(
+        "10670285876735019599106866976684908952274911389930362762537090111564921097016"
+      ),
+      BigInt(
+        "9160051989315312112039929478094450530265103887834999493414216896339841057063"
+      )
+    );
+    const msgHash = BigInt("2");
+
+    const expectedT = new WeierstrassPoint(
+      BigInt(
+        "6952765017569839958343264710546584578753992328892854973252223160184157850745"
+      ),
+      BigInt(
+        "9563206295407598382073804946882877811714977803488938527800721542415224962428"
+      )
+    );
+    const expectedU = new WeierstrassPoint(
+      BigInt(
+        "12614432555643728606782560810226874354451117249983040637892389649426582274947"
+      ),
+      BigInt(
+        "13906431017424053199814642411232056924432788712909729385753697397225312690892"
+      )
+    );
+
+    const { T, U } = computeTUFromR(R, msgHash);
+
+    expect(T.equals(expectedT)).toBe(true);
+    expect(U.equals(expectedU)).toBe(true);
   });
 });

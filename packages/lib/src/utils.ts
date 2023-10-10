@@ -1,7 +1,7 @@
 import { EdwardsPoint, WeierstrassPoint } from "./babyJubjub";
-import { EcdsaMembershipProof, Signature } from "./types";
+import { MembershipProof, Signature } from "./types";
 // @ts-ignore
-import { buildPoseidonReference } from "circomlibjs";
+import { buildPoseidonOpt as buildPoseidon } from "circomlibjs";
 
 /**
  * DER decodes a signature
@@ -33,25 +33,27 @@ export const publicKeyFromString = (pubKey: string): WeierstrassPoint => {
   const pubKeyLength = pubKey.length - 2;
   const x = hexToBigInt(pubKey.slice(2, 2 + pubKeyLength / 2));
   const y = hexToBigInt(pubKey.slice(2 + pubKeyLength / 2));
+
   return new WeierstrassPoint(x, y);
 };
 
 /**
  * Hashes an EdwardsPoint to a bigint. Uses the Poseidon hash function
  * @param pubKey - The public key to hash
+ * @param hashFn - Optional hash function to use. Defaults to Poseidon
  * @returns The hash of the public key
  */
 export const hashEdwardsPublicKey = async (
-  pubKey: EdwardsPoint
+  pubKey: EdwardsPoint,
+  hashFn?: any
 ): Promise<bigint> => {
-  const poseidon = await buildPoseidonReference();
+  const poseidon = hashFn === undefined ? await buildPoseidon() : hashFn;
   const hash = poseidon([pubKey.x, pubKey.y]);
+
   return hexToBigInt(poseidon.F.toString(hash, 16));
 };
 
-export const serializeEcdsaMembershipProof = (
-  proof: EcdsaMembershipProof
-): string => {
+export const serializeMembershipProof = (proof: MembershipProof): string => {
   const R = proof.R.serialize();
   const msgHash = bigIntToHex(proof.msgHash);
   const T = proof.T.serialize();
@@ -61,9 +63,9 @@ export const serializeEcdsaMembershipProof = (
   return JSON.stringify({ R, msgHash, T, U, zkp });
 };
 
-export const deserializeEcdsaMembershipProof = (
+export const deserializeMembershipProof = (
   serializedProof: string
-): EcdsaMembershipProof => {
+): MembershipProof => {
   const proof = JSON.parse(serializedProof);
   const R = EdwardsPoint.deserialize(proof.R);
   const msgHash = hexToBigInt(proof.msgHash);

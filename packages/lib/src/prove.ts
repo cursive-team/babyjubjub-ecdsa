@@ -1,13 +1,13 @@
 const snarkjs = require("snarkjs");
 import {
-  Signature,
   ZKP,
   MembershipZKPInputs,
-  EcdsaMembershipProof,
+  MembershipProof,
+  ProveMembershipArgs,
+  BatchProveMembershipArgs,
 } from "./types";
 import { getPublicInputsFromSignature, generateMerkleProof } from "./inputGen";
 import { isNode } from "./utils";
-import { WeierstrassPoint } from "./babyJubjub";
 
 /**
  * Generates an ECDSA membership proof for a given signature
@@ -16,20 +16,22 @@ import { WeierstrassPoint } from "./babyJubjub";
  * @param pubKeys - The list of public keys comprising the ZKP anonymity set
  * @param index - The index of the public key that generated the signature
  * @param msgHash - The hash of the message that was signed
- * @param nullifierRandomness - Optional nullifier randomness used to generate unique nullifiers
+ * @param sigNullifierRandomness - Optional nullifier randomness used to generate unique nullifiers for the signature
+ * @param pubKeyNullifierRandomness - Optional nullifier randomness used to generate unique nullifiers for the public key
  * @param pathToCircuits - The path to the circuits directory. Only needed for server side proving
  * @param hashFn - The hash function to use for the merkle tree. Defaults to Poseidon
  * @returns - The membership proof
  */
-export const proveMembership = async (
-  sig: Signature,
-  pubKeys: WeierstrassPoint[],
-  index: number,
-  msgHash: bigint,
-  nullifierRandomness: bigint = BigInt(0),
-  pathToCircuits: string | undefined = undefined,
-  hashFn: any = undefined
-): Promise<EcdsaMembershipProof> => {
+export const proveMembership = async ({
+  sig,
+  pubKeys,
+  index,
+  msgHash,
+  sigNullifierRandomness,
+  pubKeyNullifierRandomness,
+  pathToCircuits,
+  hashFn,
+}: ProveMembershipArgs): Promise<MembershipProof> => {
   console.time("Membership Proof Generation");
   console.time("T and U Generation");
   const pubKey = pubKeys[index];
@@ -53,7 +55,12 @@ export const proveMembership = async (
     root: merkleProof.root,
     pathIndices: merkleProof.pathIndices,
     siblings: merkleProof.siblings,
-    nullifierRandomness,
+    sigNullifierRandomness: sigNullifierRandomness
+      ? sigNullifierRandomness
+      : BigInt(0),
+    pubKeyNullifierRandomness: pubKeyNullifierRandomness
+      ? pubKeyNullifierRandomness
+      : BigInt(0),
   };
   const zkp = await generateMembershipZKP(proofInputs, pathToCircuits);
   console.timeEnd("ZK Proof Generation");
@@ -73,26 +80,28 @@ export const proveMembership = async (
  * Can only be used for the same list of public keys and fixed nullifier randomness
  * @param sigs - The list of signatures to generate proofs for
  * @param pubKeys - The list of public keys comprising the ZKP anonymity set
- * @param indexes - The list of indexes corresponding to the public keys that generated the signatures
+ * @param indices - The list of indices corresponding to the public keys that generated the signatures
  * @param msgHashes - The list of message hashes corresponding to the messages that were signed
- * @param nullifierRandomness - Optional nullifier randomness used to generate unique nullifiers
+ * @param sigNullifierRandomness - Optional nullifier randomness used to generate unique nullifiers for the signature
+ * @param pubKeyNullifierRandomness - Optional nullifier randomness used to generate unique nullifiers for the public key
  * @param pathToCircuits - The path to the circuits directory. Only needed for server side proving
  * @param hashFn - The hash function to use for the merkle tree. Defaults to Poseidon
  * @returns - The list of membership proofs
  */
-export const batchProveMembership = async (
-  sigs: Signature[],
-  pubKeys: WeierstrassPoint[],
-  indexes: number[],
-  msgHashes: bigint[],
-  nullifierRandomness: bigint = BigInt(0),
-  pathToCircuits: string | undefined = undefined,
-  hashFn: any = undefined
-): Promise<EcdsaMembershipProof[]> => {
+export const batchProveMembership = async ({
+  sigs,
+  pubKeys,
+  indices,
+  msgHashes,
+  sigNullifierRandomness,
+  pubKeyNullifierRandomness,
+  pathToCircuits,
+  hashFn,
+}: BatchProveMembershipArgs): Promise<MembershipProof[]> => {
   const numProofs = sigs.length;
-  if (numProofs !== indexes.length || numProofs !== msgHashes.length) {
+  if (numProofs !== indices.length || numProofs !== msgHashes.length) {
     throw new Error(
-      "Must provide the same number of signatures, indexes, and message hashes!"
+      "Must provide the same number of signatures, indices, and message hashes!"
     );
   }
 
@@ -102,7 +111,7 @@ export const batchProveMembership = async (
   const proofs = await Promise.all(
     sigs.map(async (sig, i) => {
       console.time(`Membership Proof Generation: ${i}`);
-      const index = indexes[i];
+      const index = indices[i];
       const msgHash = msgHashes[i];
 
       console.time(`T and U Generation: ${i}`);
@@ -128,7 +137,12 @@ export const batchProveMembership = async (
         root: merkleProof.root,
         pathIndices: merkleProof.pathIndices,
         siblings: merkleProof.siblings,
-        nullifierRandomness,
+        sigNullifierRandomness: sigNullifierRandomness
+          ? sigNullifierRandomness
+          : BigInt(0),
+        pubKeyNullifierRandomness: pubKeyNullifierRandomness
+          ? pubKeyNullifierRandomness
+          : BigInt(0),
       };
       const zkp = await generateMembershipZKP(proofInputs, pathToCircuits);
       console.timeEnd(`ZK Proof Generation: ${i}`);
@@ -151,12 +165,12 @@ export const batchProveMembership = async (
 /**
  * Generate a ZKP for a membership proof
  * @param proofInputs - The inputs to the membership proof circuit
- * @param pathToCircuits - The path to the circuits directory. Only needed for server side proving
+ * @param pathToCircuits - The path to the circuits directory. Only required for server side proving
  * @returns - The membership ZKP
  */
 export const generateMembershipZKP = async (
   proofInputs: MembershipZKPInputs,
-  pathToCircuits: string | undefined = undefined
+  pathToCircuits?: string
 ): Promise<ZKP> => {
   if (isNode() && pathToCircuits === undefined) {
     throw new Error(
@@ -165,12 +179,14 @@ export const generateMembershipZKP = async (
   }
 
   // For client side proving, we can retrieve circuits from cloud storage
-  const wasmPath = isNode()
-    ? pathToCircuits + "pubkey_membership.wasm"
-    : "https://storage.googleapis.com/jubmoji-circuits/pubkey_membership.wasm";
-  const zkeyPath = isNode()
-    ? pathToCircuits + "pubkey_membership.zkey"
-    : "https://storage.googleapis.com/jubmoji-circuits/pubkey_membership.zkey";
+  const wasmPath =
+    pathToCircuits !== undefined
+      ? pathToCircuits + "pubkey_membership.wasm"
+      : "https://storage.googleapis.com/jubmoji-circuits/pubkey_membership.wasm";
+  const zkeyPath =
+    pathToCircuits !== undefined
+      ? pathToCircuits + "pubkey_membership.zkey"
+      : "https://storage.googleapis.com/jubmoji-circuits/pubkey_membership.zkey";
 
   const proof = await snarkjs.groth16.fullProve(
     proofInputs,

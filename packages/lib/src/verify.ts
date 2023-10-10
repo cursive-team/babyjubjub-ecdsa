@@ -1,8 +1,14 @@
 const snarkjs = require("snarkjs");
 const fs = require("fs");
-import { EdwardsPoint, WeierstrassPoint, babyjubjub } from "./babyJubjub";
+import { EdwardsPoint } from "./babyJubjub";
+import { computeTUFromR } from "./ecdsa";
 import { computeMerkleRoot } from "./inputGen";
-import { EcdsaMembershipProof, ZKP } from "./types";
+import {
+  BatchVerifyMembershipArgs,
+  MembershipZKPPublicSignals,
+  VerifyMembershipArgs,
+  ZKP,
+} from "./types";
 import { isNode } from "./utils";
 
 /**
@@ -12,18 +18,18 @@ import { isNode } from "./utils";
  * Does not check/maintain the list of usedNullifiers, this must be done by the caller
  * @param proof - The membership proof to verify
  * @param pubKeys - The list of public keys comprising the anonymity set for the proof
- * @param nullifierRandomness - Optional nullifier randomness used to generate unique nullifiers
+ * @param sigNullifierRandomness - Optional nullifier randomness used to generate unique nullifiers for signatures
  * @param pathToCircuits - The path to the verification key. Only needed for server side verification
  * @param hashFn - The hash function to use for the merkle tree. Defaults to Poseidon
  * @returns - A boolean indicating whether or not the proof is valid
  */
-export const verifyMembership = async (
-  proof: EcdsaMembershipProof,
-  pubKeys: WeierstrassPoint[],
-  nullifierRandomness: bigint = BigInt(0),
-  pathToCircuits: string | undefined = undefined,
-  hashFn: any = undefined
-): Promise<boolean> => {
+export const verifyMembership = async ({
+  proof,
+  pubKeys,
+  sigNullifierRandomness,
+  pathToCircuits,
+  hashFn,
+}: VerifyMembershipArgs): Promise<boolean> => {
   if (isNode() && pathToCircuits === undefined) {
     throw new Error(
       "Path to circuits must be provided for server side verification!"
@@ -31,30 +37,30 @@ export const verifyMembership = async (
   }
 
   console.time("Membership Proof Verification");
+  const publicSignals = getPublicSignalsFromMembershipZKP(proof.zkp);
+
   console.time("Merkle Root Verification");
-  const publicSignals = proof.zkp.publicSignals;
-  const merkleRoot = BigInt(publicSignals[1]);
   const edwardsPubKeys = pubKeys.map((pubKey) => pubKey.toEdwards());
   const computedMerkleRoot = await computeMerkleRoot(edwardsPubKeys, hashFn);
-  if (computedMerkleRoot !== merkleRoot) {
+  if (computedMerkleRoot !== publicSignals.merkleRoot) {
     return false;
   }
   console.timeEnd("Merkle Root Verification");
 
   console.time("T and U Verification");
-  const [Tx, Ty, Ux, Uy] = publicSignals.slice(2, 6).map(BigInt);
-  const T = new EdwardsPoint(Tx, Ty);
-  const U = new EdwardsPoint(Ux, Uy);
+  const { T, U } = publicSignals;
   const { R, msgHash } = proof;
-  const { T: computedT, U: computedU } = await recoverTUFromProof(R, msgHash);
-  if (!computedT.equals(T) || !computedU.equals(U)) {
+  const { T: computedT, U: computedU } = computeTUFromR(
+    R.toWeierstrass(),
+    msgHash
+  );
+  if (!computedT.toEdwards().equals(T) || !computedU.toEdwards().equals(U)) {
     return false;
   }
   console.timeEnd("T and U Verification");
 
   console.time("Nullifier Verification");
-  const proofNullifierRandomness = BigInt(publicSignals[6]);
-  if (proofNullifierRandomness !== nullifierRandomness) {
+  if (sigNullifierRandomness != publicSignals.sigNullifierRandomness) {
     return false;
   }
   console.timeEnd("Nullifier Verification");
@@ -80,18 +86,18 @@ export const verifyMembership = async (
  * Does not check/maintain the list of usedNullifiers, this must be done by the caller
  * @param proofs - The membership proofs to verify
  * @param pubKeys - The list of public keys comprising the anonymity set for the proof
- * @param nullifierRandomness - Optional nullifier randomness used to generate unique nullifiers
+ * @param sigNullifierRandomness - Optional nullifier randomness used to generate unique nullifiers for signatures
  * @param pathToCircuits - The path to the verification key. Only needed for server side verification
  * @param hashFn - The hash function to use for the merkle tree. Defaults to Poseidon
  * @returns - A boolean indicating whether or not all of the proofs are valid
  */
-export const batchVerifyMembership = async (
-  proofs: EcdsaMembershipProof[],
-  pubKeys: WeierstrassPoint[],
-  nullifierRandomness: bigint = BigInt(0),
-  pathToCircuits: string | undefined = undefined,
-  hashFn: any = undefined
-): Promise<boolean> => {
+export const batchVerifyMembership = async ({
+  proofs,
+  pubKeys,
+  sigNullifierRandomness,
+  pathToCircuits,
+  hashFn,
+}: BatchVerifyMembershipArgs): Promise<boolean> => {
   if (isNode() && pathToCircuits === undefined) {
     throw new Error(
       "Path to circuits must be provided for server side verification!"
@@ -113,31 +119,31 @@ export const batchVerifyMembership = async (
   const verified = await Promise.all(
     proofs.map(async (proof, i) => {
       console.time(`Membership Proof Verification: ${i}`);
+      const publicSignals = getPublicSignalsFromMembershipZKP(proof.zkp);
+
       console.time(`Merkle Root Verification: ${i}`);
-      const publicSignals = proof.zkp.publicSignals;
-      const merkleRoot = BigInt(publicSignals[1]);
-      if (computedMerkleRoot !== merkleRoot) {
+      if (computedMerkleRoot !== publicSignals.merkleRoot) {
         return false;
       }
       console.timeEnd(`Merkle Root Verification: ${i}`);
 
       console.time(`T and U Verification: ${i}`);
-      const [Tx, Ty, Ux, Uy] = publicSignals.slice(2, 6).map(BigInt);
-      const T = new EdwardsPoint(Tx, Ty);
-      const U = new EdwardsPoint(Ux, Uy);
+      const { T, U } = publicSignals;
       const { R, msgHash } = proof;
-      const { T: computedT, U: computedU } = await recoverTUFromProof(
-        R,
+      const { T: computedT, U: computedU } = computeTUFromR(
+        R.toWeierstrass(),
         msgHash
       );
-      if (!computedT.equals(T) || !computedU.equals(U)) {
+      if (
+        !computedT.toEdwards().equals(T) ||
+        !computedU.toEdwards().equals(U)
+      ) {
         return false;
       }
       console.timeEnd(`T and U Verification: ${i}`);
 
       console.time(`Nullifier Verification: ${i}`);
-      const proofNullifierRandomness = BigInt(publicSignals[6]);
-      if (proofNullifierRandomness !== nullifierRandomness) {
+      if (sigNullifierRandomness != publicSignals.sigNullifierRandomness) {
         return false;
       }
       console.timeEnd(`Nullifier Verification: ${i}`);
@@ -152,40 +158,7 @@ export const batchVerifyMembership = async (
   );
   console.timeEnd("Batch Membership Proof Verification");
 
-  // Could rewrite this to short circuit if any are false verifications,
-  // but it might be useful in the future to know which ones failed
   return verified.every((v) => v);
-};
-
-/**
- * Recovers public parameters T, U of the membership proof based on the provided R value
- * This ensures that T, U were generated appropriately
- * See: https://hackmd.io/HQZxucnhSGKT_VfNwB6wOw?view
- * @param R - The R value of the membership proof
- * @param msgHash - The hash of the message signed by the signature
- * @returns - The public parameters T, U
- */
-export const recoverTUFromProof = async (
-  R: EdwardsPoint,
-  msgHash: bigint
-): Promise<{ T: EdwardsPoint; U: EdwardsPoint }> => {
-  const Fs = babyjubjub.Fs;
-
-  const shortR = R.toWeierstrass();
-  const r = shortR.x % Fs.p;
-  const rInv = Fs.inv(r);
-  const ecR = babyjubjub.ec.curve.point(
-    shortR.x.toString(16),
-    shortR.y.toString(16)
-  );
-  const ecT = ecR.mul(rInv.toString(16));
-  const T = WeierstrassPoint.fromEllipticPoint(ecT);
-  const G = babyjubjub.ec.curve.g;
-  const rInvm = Fs.neg(Fs.mul(rInv, msgHash));
-  const ecU = G.mul(rInvm.toString(16));
-  const U = WeierstrassPoint.fromEllipticPoint(ecU);
-
-  return { T: T.toEdwards(), U: U.toEdwards() };
 };
 
 /**
@@ -203,18 +176,24 @@ export const verifyMembershipZKP = async (
 };
 
 /**
- * Gets the nullifier from an ECDSA membership proof
- * Extracts the nullifier from the membership proof's zero knowledge proof's public inputs
- * Should be used to enforce that nullifiers are unique
- * @param proof - The membership proof to get the nullifier from
- * @returns - The nullifier as a bigint
+ * Gets public signals as typed arguments from a membership zkp
+ * @param zkp - The membership zkp
+ * @returns - Public signals of the membership zkp
  */
-export const getNullifierFromMembershipProof = (
-  proof: EcdsaMembershipProof
-): bigint => {
-  const publicSignals = proof.zkp.publicSignals;
+export const getPublicSignalsFromMembershipZKP = (
+  zkp: ZKP
+): MembershipZKPPublicSignals => {
+  const publicSignals = zkp.publicSignals;
 
-  return BigInt(publicSignals[0]);
+  return {
+    merkleRoot: BigInt(publicSignals[3]),
+    T: new EdwardsPoint(BigInt(publicSignals[4]), BigInt(publicSignals[5])),
+    U: new EdwardsPoint(BigInt(publicSignals[6]), BigInt(publicSignals[7])),
+    sigNullifier: BigInt(publicSignals[0]),
+    sigNullifierRandomness: BigInt(publicSignals[8]),
+    pubKeyNullifier: BigInt(publicSignals[1]),
+    pubKeyNullifierRandomnessHash: BigInt(publicSignals[2]),
+  };
 };
 
 const getVerificationKeyFromFile = async (

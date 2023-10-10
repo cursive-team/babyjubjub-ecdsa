@@ -1,6 +1,6 @@
 const BN = require("bn.js");
 // @ts-ignore
-import { buildPoseidonReference } from "circomlibjs";
+import { buildPoseidonOpt as buildPoseidon } from "circomlibjs";
 import { EdwardsPoint, WeierstrassPoint, babyjubjub } from "./babyJubjub";
 import { Signature, MerkleProof } from "./types";
 import { hashEdwardsPublicKey, hexToBigInt } from "./utils";
@@ -16,7 +16,7 @@ import { hashEdwardsPublicKey, hexToBigInt } from "./utils";
  */
 export const computeMerkleRoot = async (
   pubKeys: EdwardsPoint[],
-  hashFn: any = undefined
+  hashFn?: any
 ): Promise<bigint> => {
   const proof = await generateMerkleProof(pubKeys, 0, hashFn);
   return proof.root;
@@ -33,7 +33,7 @@ export const computeMerkleRoot = async (
 export const generateMerkleProof = async (
   pubKeys: EdwardsPoint[],
   index: number,
-  hashFn: any = undefined
+  hashFn?: any
 ): Promise<MerkleProof> => {
   const TREE_DEPTH = 8; // We used a fixed depth merkle tree for now
   // Precomputed hashes of zero for each layer of the merkle tree
@@ -48,11 +48,12 @@ export const generateMerkleProof = async (
     "3396914609616007258851405644437304192397291162432396347162513310381425243293",
   ];
   // Building poseidon actually takes a while, so it's best if it is passed in for client side proving
-  const poseidon =
-    hashFn === undefined ? await buildPoseidonReference() : hashFn;
+  const poseidon = hashFn === undefined ? await buildPoseidon() : hashFn;
 
   // All public keys are hashed before insertion into the tree
-  const leaves = await Promise.all(pubKeys.map(hashEdwardsPublicKey));
+  const leaves = await Promise.all(
+    pubKeys.map((pubKey) => hashEdwardsPublicKey(pubKey, poseidon))
+  );
 
   let prevLayer: bigint[] = leaves;
   let nextLayer: bigint[] = [];
@@ -88,6 +89,7 @@ export const generateMerkleProof = async (
  * Generates the public inputs for a membership proof
  * Uses notation and formulation from Efficient ECDSA
  * https://personaelabs.org/posts/efficient-ecdsa-1/
+ * Public inputs are points in Twisted Edwards form for efficient in circuit operations
  * @param sig - The signature to generate the public inputs for
  * @param msgHash - The message hash to generate the public inputs for
  * @param pubKey - The public key to generate the public inputs for
@@ -118,6 +120,7 @@ export const getPublicInputsFromSignature = (
       } catch (e) {
         continue;
       }
+      // We should use computeTUFromR here but I can't get the ec math to be correct from converting to elliptic.js points
       const ecT = ecR.mul(rInv.toString(16));
       const T = WeierstrassPoint.fromEllipticPoint(ecT);
       const G = babyjubjub.ec.curve.g;

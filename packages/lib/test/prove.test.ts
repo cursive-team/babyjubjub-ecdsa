@@ -2,12 +2,12 @@ const fs = require("fs");
 import { batchProveMembership, proveMembership } from "../src/prove";
 import {
   batchVerifyMembership,
-  getNullifierFromMembershipProof,
+  getPublicSignalsFromMembershipZKP,
   verifyMembership,
   verifyMembershipZKP,
 } from "../src/verify";
 import { derDecode, hexToBigInt, publicKeyFromString } from "../src/utils";
-import { WeierstrassPoint } from "../src/babyJubjub";
+import { EdwardsPoint, WeierstrassPoint } from "../src/babyJubjub";
 
 // Tests membership proof generation and verification, including zkp proving and verification
 describe("ECDSA membership proof generation and verification", () => {
@@ -30,7 +30,8 @@ describe("ECDSA membership proof generation and verification", () => {
       "044d9d03f3266f24777ac488f04ec579e1c4bea984398c9b98d99a9e31bc75ef0f13a19471a7297a6f2bf0126ed93d4c55b6e98ec286203e3d761c61922e3a4cda",
     ];
     const pubKeyPoints = pubKeys.map(publicKeyFromString);
-    const nullifierRandomness = BigInt(0);
+    const sigNullifierRandomness = BigInt(0);
+    const pubKeyNullifierRandomness = BigInt(0);
 
     test("should generate and verify a membership proof 0", async () => {
       const msgHash = BigInt("0");
@@ -43,21 +44,22 @@ describe("ECDSA membership proof generation and verification", () => {
         ),
       };
 
-      const proof = await proveMembership(
+      const proof = await proveMembership({
         sig,
-        pubKeyPoints,
-        2,
+        pubKeys: pubKeyPoints,
+        index: 2,
         msgHash,
-        nullifierRandomness,
-        pathToCircuits
-      );
+        sigNullifierRandomness,
+        pubKeyNullifierRandomness,
+        pathToCircuits,
+      });
 
-      const verified = await verifyMembership(
+      const verified = await verifyMembership({
         proof,
-        pubKeyPoints,
-        nullifierRandomness,
-        pathToCircuits
-      );
+        pubKeys: pubKeyPoints,
+        sigNullifierRandomness,
+        pathToCircuits,
+      });
 
       expect(verified).toBe(true);
     });
@@ -102,28 +104,30 @@ describe("ECDSA membership proof generation and verification", () => {
     const msgHash = hexToBigInt(
       "00000000000000000000000000000000ABADBABEABADBABEABADBABEABADBABE"
     );
-    const nullifierRandomness = BigInt("420420420");
+    const sigNullifierRandomness = BigInt("420420420");
+    const pubKeyNullifierRandomness = BigInt("13371337");
 
     test("should generate and verify a membership proof with encoded signatures and nullifier randomness 0", async () => {
       const encodedSig =
         "30440220036E3AD3E9358B8299A60150BB925DEF60519861DB29E6468366ABE441F04C71022003872AABF9BE3935EF255FDB847A09E1789990BE85C3C368589D7693D0E5B36F";
       const sig = derDecode(encodedSig);
 
-      const proof = await proveMembership(
+      const proof = await proveMembership({
         sig,
         pubKeys,
-        1,
+        index: 1,
         msgHash,
-        nullifierRandomness,
-        pathToCircuits
-      );
+        sigNullifierRandomness,
+        pubKeyNullifierRandomness,
+        pathToCircuits,
+      });
 
-      const verified = await verifyMembership(
+      const verified = await verifyMembership({
         proof,
         pubKeys,
-        nullifierRandomness,
-        pathToCircuits
-      );
+        sigNullifierRandomness,
+        pathToCircuits,
+      });
 
       expect(verified).toBe(true);
     });
@@ -133,21 +137,22 @@ describe("ECDSA membership proof generation and verification", () => {
         "30440220050AFA65DFD6E8709364DCF739FBAF2D6B436F84ADD5296BEE38BC65FA116912022001E8390CB9EF3688E2F319C0D08BB5DC11442BA9A93453660CD86B3728D0C106";
       const sig = derDecode(encodedSig);
 
-      const proof = await proveMembership(
+      const proof = await proveMembership({
         sig,
         pubKeys,
-        2,
+        index: 2,
         msgHash,
-        nullifierRandomness,
-        pathToCircuits
-      );
+        sigNullifierRandomness,
+        pubKeyNullifierRandomness,
+        pathToCircuits,
+      });
 
-      const verified = await verifyMembership(
+      const verified = await verifyMembership({
         proof,
         pubKeys,
-        nullifierRandomness,
-        pathToCircuits
-      );
+        sigNullifierRandomness,
+        pathToCircuits,
+      });
 
       expect(verified).toBe(true);
     });
@@ -163,29 +168,30 @@ describe("ECDSA membership proof generation and verification", () => {
       ];
       const sigs = encodedSigs.map(derDecode);
 
-      const proofs = await batchProveMembership(
+      const proofs = await batchProveMembership({
         sigs,
         pubKeys,
-        [1, 1, 2, 2, 3, 3],
-        [msgHash, msgHash, msgHash, msgHash, msgHash, msgHash],
-        nullifierRandomness,
-        pathToCircuits
-      );
+        indices: [1, 1, 2, 2, 3, 3],
+        msgHashes: [msgHash, msgHash, msgHash, msgHash, msgHash, msgHash],
+        sigNullifierRandomness,
+        pubKeyNullifierRandomness,
+        pathToCircuits,
+      });
 
-      const verified = await batchVerifyMembership(
+      const verified = await batchVerifyMembership({
         proofs,
         pubKeys,
-        nullifierRandomness,
-        pathToCircuits
-      );
+        sigNullifierRandomness,
+        pathToCircuits,
+      });
 
       expect(verified).toBe(true);
     });
   });
 
-  // Tests recovery of nullifier from membership proof
-  describe("recover nullifier from proof", () => {
-    test("should recover the correct nullifier", async () => {
+  // Tests recovery of public signals from membership proof
+  describe("recover public signals from membership proof", () => {
+    test("should recover the correct public signals from a generated proof", async () => {
       const pubKeys = [
         "041941f5abe4f903af965d707182b688bd1fa725fd2cbc648fc435feb42a3794593275a2e9b4ad4bc0d2f3ecc8d23e3cf89da889d7aa35ce33f132d87b5bb5c393",
         "049ae9f2ec6a4db43f0e081a436f885b0d3f5753a45b00d2f2e3da38956848c4ff0205d89e14a2e36976bfe033407dbce6b48261d84d201277de0c3b82f08ddb09",
@@ -193,7 +199,8 @@ describe("ECDSA membership proof generation and verification", () => {
         "044d9d03f3266f24777ac488f04ec579e1c4bea984398c9b98d99a9e31bc75ef0f13a19471a7297a6f2bf0126ed93d4c55b6e98ec286203e3d761c61922e3a4cda",
       ];
       const pubKeyPoints = pubKeys.map(publicKeyFromString);
-      const nullifierRandomness = BigInt(0);
+      const sigNullifierRandomness = BigInt(0);
+      const pubKeyNullifierRandomness = BigInt(0);
 
       const msgHash = BigInt("0");
       const sig = {
@@ -205,22 +212,56 @@ describe("ECDSA membership proof generation and verification", () => {
         ),
       };
 
-      const proof = await proveMembership(
+      const proof = await proveMembership({
         sig,
-        pubKeyPoints,
-        2,
+        pubKeys: pubKeyPoints,
+        index: 2,
         msgHash,
-        nullifierRandomness,
-        pathToCircuits
+        sigNullifierRandomness,
+        pubKeyNullifierRandomness,
+        pathToCircuits,
+      });
+
+      const publicSignals = getPublicSignalsFromMembershipZKP(proof.zkp);
+
+      expect(publicSignals.sigNullifier).toEqual(
+        BigInt(
+          "17825334909698573620993222371821585663772073121519814540615199066752100895281"
+        )
       );
-
-      const recoveredNullifier = getNullifierFromMembershipProof(proof);
-
-      const expectedNullifier = BigInt(
-        "17825334909698573620993222371821585663772073121519814540615199066752100895281"
+      expect(publicSignals.pubKeyNullifier).toEqual(
+        BigInt(
+          "9949682763199094406947497597619206603576319427215228151667831375779683522772"
+        )
       );
-
-      expect(recoveredNullifier).toEqual(expectedNullifier);
+      expect(publicSignals.pubKeyNullifierRandomnessHash).toEqual(
+        BigInt(
+          "14744269619966411208579211824598458697587494354926760081771325075741142829156"
+        )
+      );
+      expect(publicSignals.merkleRoot).toEqual(
+        BigInt(
+          "1799182282238172949735919814155076722550339245418717182904975644657694908682"
+        )
+      );
+      expect(
+        publicSignals.T.equals(
+          new EdwardsPoint(
+            BigInt(
+              "11796026433945242671642728009981778919257130899633207712788256867701213124641"
+            ),
+            BigInt(
+              "14123514812924309349601388555201142092835117152213858542018278815110993732603"
+            )
+          )
+        )
+      ).toBe(true);
+      expect(
+        publicSignals.U.equals(new EdwardsPoint(BigInt("0"), BigInt("1")))
+      ).toBe(true);
+      expect(publicSignals.sigNullifierRandomness).toEqual(
+        sigNullifierRandomness
+      );
     });
   });
 
