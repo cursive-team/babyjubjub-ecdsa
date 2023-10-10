@@ -91,3 +91,30 @@ export const recoverPubKeyIndexFromSignature = (
 
   throw new Error("Could not recover public key from signature");
 };
+
+/**
+ * Computes public parameters T, U of the membership proof based on the provided R value
+ * This ensures that T, U were generated appropriately
+ * See: https://hackmd.io/HQZxucnhSGKT_VfNwB6wOw?view
+ * @param R - The R value of the membership proof
+ * @param msgHash - The hash of the message signed by the signature
+ * @returns - The public parameters T, U
+ */
+export const computeTUFromR = (
+  R: WeierstrassPoint,
+  msgHash: bigint
+): { T: WeierstrassPoint; U: WeierstrassPoint } => {
+  const Fs = babyjubjub.Fs;
+
+  const r = R.x % Fs.p;
+  const rInv = Fs.inv(r);
+  const ecR = babyjubjub.ec.curve.point(R.x.toString(16), R.y.toString(16));
+  const ecT = ecR.mul(rInv.toString(16));
+  const T = WeierstrassPoint.fromEllipticPoint(ecT);
+  const G = babyjubjub.ec.curve.g;
+  const rInvm = Fs.neg(Fs.mul(rInv, msgHash));
+  const ecU = G.mul(rInvm.toString(16));
+  const U = WeierstrassPoint.fromEllipticPoint(ecU);
+
+  return { T, U };
+};

@@ -4,16 +4,16 @@ import {
   bytesToBigInt,
   bytesToHex,
   derDecode,
-  deserializeEcdsaMembershipProof,
+  deserializeMembershipProof,
   hashEdwardsPublicKey,
   hexToBigInt,
   hexToBytes,
   publicKeyFromString,
-  serializeEcdsaMembershipProof,
+  serializeMembershipProof,
 } from "../src/utils";
 import { EdwardsPoint, WeierstrassPoint } from "../src/babyJubjub";
 // @ts-ignore
-import { buildPoseidonReference } from "circomlibjs";
+import { buildPoseidonOpt as buildPoseidon } from "circomlibjs";
 import { proveMembership } from "../src/prove";
 
 // All magic expected values are based on a combination of values
@@ -136,7 +136,8 @@ describe("signature and key parsing utilities", () => {
       "044d9d03f3266f24777ac488f04ec579e1c4bea984398c9b98d99a9e31bc75ef0f13a19471a7297a6f2bf0126ed93d4c55b6e98ec286203e3d761c61922e3a4cda",
     ];
     const pubKeyPoints = pubKeys.map(publicKeyFromString);
-    const nullifierRandomness = BigInt(0);
+    const sigNullifierRandomness = BigInt(0);
+    const pubKeyNullifierRandomness = BigInt(0);
     const msgHash = BigInt("0");
     const sig = {
       r: hexToBigInt(
@@ -147,17 +148,18 @@ describe("signature and key parsing utilities", () => {
       ),
     };
 
-    const proof = await proveMembership(
+    const proof = await proveMembership({
       sig,
-      pubKeyPoints,
-      2,
+      pubKeys: pubKeyPoints,
+      index: 2,
       msgHash,
-      nullifierRandomness,
-      pathToCircuits
-    );
+      sigNullifierRandomness,
+      pubKeyNullifierRandomness,
+      pathToCircuits,
+    });
 
-    const serializedProof = serializeEcdsaMembershipProof(proof);
-    const deserializedProof = deserializeEcdsaMembershipProof(serializedProof);
+    const serializedProof = serializeMembershipProof(proof);
+    const deserializedProof = deserializeMembershipProof(serializedProof);
 
     expect(deserializedProof.R.equals(proof.R)).toBe(true);
     expect(deserializedProof.msgHash).toEqual(proof.msgHash);
@@ -178,7 +180,7 @@ describe("signature and key parsing utilities", () => {
     const a = 1;
     const b = 2;
 
-    const poseidon = await buildPoseidonReference();
+    const poseidon = await buildPoseidon();
     const hash = poseidon.F.toString(poseidon([a, b]), 16);
 
     expect(hash).toEqual(expected);
@@ -192,7 +194,7 @@ describe("signature and key parsing utilities", () => {
     const b =
       "15702184800053625297652133943476286357553803483146409610785811576616213183541";
 
-    const poseidon = await buildPoseidonReference();
+    const poseidon = await buildPoseidon();
     const hash = poseidon.F.toString(poseidon([a, b]), 10);
 
     expect(hash).toEqual(expected);

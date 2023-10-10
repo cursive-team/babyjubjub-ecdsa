@@ -1,5 +1,5 @@
 // @ts-ignore
-import { buildPoseidonReference } from "circomlibjs";
+import { buildPoseidonOpt as buildPoseidon } from "circomlibjs";
 import {
   generateMerkleProof,
   getPublicInputsFromSignature,
@@ -23,16 +23,20 @@ describe("merkle tree", () => {
       "044d9d03f3266f24777ac488f04ec579e1c4bea984398c9b98d99a9e31bc75ef0f13a19471a7297a6f2bf0126ed93d4c55b6e98ec286203e3d761c61922e3a4cda",
     ];
     const index = 2;
-    const poseidon = await buildPoseidonReference();
+    const poseidon = await buildPoseidon();
 
     const edwardsPubKeys = pubKeys.map((pubKey) => {
       const weierstrassPubKey = publicKeyFromString(pubKey);
       return weierstrassPubKey.toEdwards();
     });
-    const merkleProof = await generateMerkleProof(edwardsPubKeys, index);
+    const merkleProof = await generateMerkleProof(
+      edwardsPubKeys,
+      index,
+      poseidon
+    );
 
     const pubKey = edwardsPubKeys[index];
-    const leaf = await hashEdwardsPublicKey(pubKey);
+    const leaf = await hashEdwardsPublicKey(pubKey, poseidon);
 
     let node = leaf;
     for (let i = 0; i < 8; i++) {
