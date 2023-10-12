@@ -1,4 +1,6 @@
 const fs = require("fs");
+// @ts-ignore
+import { buildPoseidonOpt as buildPoseidon } from "circomlibjs";
 import { batchProveMembership, proveMembership } from "../src/prove";
 import {
   batchVerifyMembership,
@@ -8,6 +10,11 @@ import {
 } from "../src/verify";
 import { derDecode, hexToBigInt, publicKeyFromString } from "../src/utils";
 import { EdwardsPoint, WeierstrassPoint } from "../src/babyJubjub";
+import {
+  computeMerkleProof,
+  computeMerkleRoot,
+  getPublicInputsFromSignature,
+} from "../src/inputGen";
 
 // Tests membership proof generation and verification, including zkp proving and verification
 describe("ECDSA membership proof generation and verification", () => {
@@ -33,7 +40,7 @@ describe("ECDSA membership proof generation and verification", () => {
     const sigNullifierRandomness = BigInt(0);
     const pubKeyNullifierRandomness = BigInt(0);
 
-    test("should generate and verify a membership proof 0", async () => {
+    test("should generate and verify a membership proof and return the correct nullifier", async () => {
       const msgHash = BigInt("0");
       const sig = {
         r: hexToBigInt(
@@ -43,25 +50,129 @@ describe("ECDSA membership proof generation and verification", () => {
           "0370C60A23266F520C56DA088B4C4AFAAAF6BB1993A501980F6D8FB6F343984A"
         ),
       };
+      const poseidon = await buildPoseidon();
 
       const proof = await proveMembership({
         sig,
-        pubKeys: pubKeyPoints,
-        index: 2,
         msgHash,
+        merkleProofArgs: {
+          pubKeys: pubKeyPoints,
+          index: 2,
+          hashFn: poseidon,
+        },
         sigNullifierRandomness,
         pubKeyNullifierRandomness,
         pathToCircuits,
       });
 
-      const verified = await verifyMembership({
+      const result = await verifyMembership({
         proof,
-        pubKeys: pubKeyPoints,
+        merkleRootArgs: {
+          pubKeys: pubKeyPoints,
+          hashFn: poseidon,
+        },
         sigNullifierRandomness,
         pathToCircuits,
       });
 
-      expect(verified).toBe(true);
+      const expectedNullifier = hexToBigInt(
+        poseidon.F.toString(poseidon([sig.s, sigNullifierRandomness]), 16)
+      );
+
+      expect(result.verified).toBe(true);
+      expect(result.consumedSigNullifiers).toEqual([expectedNullifier]);
+    });
+
+    test("should generate and a valid membership proof with precomputed inputs", async () => {
+      const msgHash = BigInt("0");
+      const sig = {
+        r: hexToBigInt(
+          "00EF7145470CEC0B683C629CBA8ED58110000FFE657366F7D5A91F2D149DD8B5"
+        ),
+        s: hexToBigInt(
+          "0370C60A23266F520C56DA088B4C4AFAAAF6BB1993A501980F6D8FB6F343984A"
+        ),
+      };
+      const index = 2;
+
+      const pubKeyPoints = pubKeys.map(publicKeyFromString);
+
+      const publicInputs = getPublicInputsFromSignature(
+        sig,
+        msgHash,
+        pubKeyPoints[index]
+      );
+
+      const edwardsPubKeys = await Promise.all(
+        pubKeyPoints.map(async (pubKey) => pubKey.toEdwards())
+      );
+      const merkleProof = await computeMerkleProof(edwardsPubKeys, index);
+
+      const proof = await proveMembership({
+        sig,
+        msgHash,
+        publicInputs,
+        merkleProof,
+        sigNullifierRandomness,
+        pubKeyNullifierRandomness,
+        pathToCircuits,
+      });
+
+      const result = await verifyMembership({
+        proof,
+        merkleRootArgs: {
+          pubKeys: pubKeyPoints,
+        },
+        sigNullifierRandomness,
+        pathToCircuits,
+      });
+
+      expect(result.verified).toBe(true);
+    });
+
+    test("should generate and verify a membership proof with precomputed inputs", async () => {
+      const msgHash = BigInt("0");
+      const sig = {
+        r: hexToBigInt(
+          "00EF7145470CEC0B683C629CBA8ED58110000FFE657366F7D5A91F2D149DD8B5"
+        ),
+        s: hexToBigInt(
+          "0370C60A23266F520C56DA088B4C4AFAAAF6BB1993A501980F6D8FB6F343984A"
+        ),
+      };
+      const index = 2;
+
+      const pubKeyPoints = pubKeys.map(publicKeyFromString);
+
+      const publicInputs = getPublicInputsFromSignature(
+        sig,
+        msgHash,
+        pubKeyPoints[index]
+      );
+
+      const edwardsPubKeys = await Promise.all(
+        pubKeyPoints.map(async (pubKey) => pubKey.toEdwards())
+      );
+      const merkleProof = await computeMerkleProof(edwardsPubKeys, index);
+      const proof = await proveMembership({
+        sig,
+        msgHash,
+        publicInputs,
+        merkleProof,
+        sigNullifierRandomness,
+        pubKeyNullifierRandomness,
+        pathToCircuits,
+      });
+
+      const merkleRoot = await computeMerkleRoot(edwardsPubKeys);
+      const result = await verifyMembership({
+        proof,
+        merkleRoot,
+        sigNullifierRandomness,
+        pathToCircuits,
+      });
+
+      expect(result.verified).toBe(true);
     });
   });
 
@@ -114,22 +225,26 @@ describe("ECDSA membership proof generation and verification", () => {
 
       const proof = await proveMembership({
         sig,
-        pubKeys,
-        index: 1,
         msgHash,
+        merkleProofArgs: {
+          pubKeys,
+          index: 1,
+        },
         sigNullifierRandomness,
         pubKeyNullifierRandomness,
         pathToCircuits,
       });
 
-      const verified = await verifyMembership({
+      const result = await verifyMembership({
         proof,
-        pubKeys,
+        merkleRootArgs: {
+          pubKeys,
+        },
         sigNullifierRandomness,
         pathToCircuits,
       });
 
-      expect(verified).toBe(true);
+      expect(result.verified).toBe(true);
     });
 
     test("should generate and verify a membership proof with encoded signatures and nullifier randomness 1", async () => {
@@ -139,22 +254,26 @@ describe("ECDSA membership proof generation and verification", () => {
 
       const proof = await proveMembership({
         sig,
-        pubKeys,
-        index: 2,
         msgHash,
+        merkleProofArgs: {
+          pubKeys,
+          index: 2,
+        },
         sigNullifierRandomness,
         pubKeyNullifierRandomness,
         pathToCircuits,
       });
 
-      const verified = await verifyMembership({
+      const result = await verifyMembership({
         proof,
-        pubKeys,
+        merkleRootArgs: {
+          pubKeys,
+        },
         sigNullifierRandomness,
         pathToCircuits,
       });
 
-      expect(verified).toBe(true);
+      expect(result.verified).toBe(true);
     });
 
     test("should batch generate and verify membership proofs with encoded signatures and nullifier randomness", async () => {
@@ -170,22 +289,26 @@ describe("ECDSA membership proof generation and verification", () => {
 
       const proofs = await batchProveMembership({
         sigs,
-        pubKeys,
-        indices: [1, 1, 2, 2, 3, 3],
         msgHashes: [msgHash, msgHash, msgHash, msgHash, msgHash, msgHash],
+        merkleProofArgs: {
+          pubKeys,
+          indices: [1, 1, 2, 2, 3, 3],
+        },
         sigNullifierRandomness,
         pubKeyNullifierRandomness,
         pathToCircuits,
       });
 
-      const verified = await batchVerifyMembership({
+      const result = await batchVerifyMembership({
         proofs,
-        pubKeys,
+        merkleRootArgs: {
+          pubKeys,
+        },
         sigNullifierRandomness,
         pathToCircuits,
       });
 
-      expect(verified).toBe(true);
+      expect(result.verified).toBe(true);
     });
   });
 
@@ -214,9 +337,11 @@ describe("ECDSA membership proof generation and verification", () => {
 
       const proof = await proveMembership({
         sig,
-        pubKeys: pubKeyPoints,
-        index: 2,
         msgHash,
+        merkleProofArgs: {
+          pubKeys: pubKeyPoints,
+          index: 2,
+        },
         sigNullifierRandomness,
         pubKeyNullifierRandomness,
         pathToCircuits,

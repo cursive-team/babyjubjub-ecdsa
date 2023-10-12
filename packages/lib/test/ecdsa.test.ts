@@ -249,9 +249,9 @@ describe("efficient ecdsa utils", () => {
       )
     );
 
-    const { T, U } = computeTUFromR(R, msgHash);
+    const { T, U } = computeTUFromR(R.toEdwards(), msgHash);
 
-    expect(T.equals(expectedT)).toBe(true);
-    expect(U.equals(expectedU)).toBe(true);
+    expect(T.toWeierstrass().equals(expectedT)).toBe(true);
+    expect(U.toWeierstrass().equals(expectedU)).toBe(true);
   });
 });

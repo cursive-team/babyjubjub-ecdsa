@@ -1,12 +1,14 @@
 {
   "name": "babyjubjub-ecdsa",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "main": "build/lib.js",
   "license": "MIT",
   "dependencies": {
+    "@types/uuid": "^9.0.5",
     "circomlibjs": "^0.1.7",
     "elliptic": "^6.5.4",
-    "snarkjs": "^0.7.1"
+    "snarkjs": "^0.7.1",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@types/jest": "^29.5.5",

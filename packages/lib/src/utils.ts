@@ -56,11 +56,9 @@ export const hashEdwardsPublicKey = async (
 export const serializeMembershipProof = (proof: MembershipProof): string => {
   const R = proof.R.serialize();
   const msgHash = bigIntToHex(proof.msgHash);
-  const T = proof.T.serialize();
-  const U = proof.U.serialize();
   const zkp = proof.zkp;
 
-  return JSON.stringify({ R, msgHash, T, U, zkp });
+  return JSON.stringify({ R, msgHash, zkp });
 };
 
 export const deserializeMembershipProof = (
@@ -69,11 +67,9 @@ export const deserializeMembershipProof = (
   const proof = JSON.parse(serializedProof);
   const R = EdwardsPoint.deserialize(proof.R);
   const msgHash = hexToBigInt(proof.msgHash);
-  const T = EdwardsPoint.deserialize(proof.T);
-  const U = EdwardsPoint.deserialize(proof.U);
   const zkp = proof.zkp;
 
-  return { R, msgHash, T, U, zkp };
+  return { R, msgHash, zkp };
 };
 
 export const hexToBigInt = (hex: string): bigint => {
@@ -108,6 +104,16 @@ export const bytesToBigInt = (bytes: Uint8Array): bigint => {
 
 export const bigIntToBytes = (bigInt: bigint): Uint8Array => {
   return hexToBytes(bigIntToHex(bigInt));
+};
+
+export const areAllBigIntsTheSame = (bigInts: bigint[]): boolean => {
+  return bigInts.every((bigInt) => bigInt === bigInts[0]);
+};
+
+export const areAllBigIntsDifferent = (bigInts: bigint[]): boolean => {
+  const bigIntSet = new Set(bigInts);
+
+  return bigIntSet.size === bigInts.length;
 };
 
 export const isNode = (): boolean => {
