@@ -1,7 +1,7 @@
 const elliptic = require("elliptic");
-import * as hash from "hash.js";
 // @ts-ignore
 import { ZqField } from "ffjavascript";
+import * as hash from "hash.js";
 import { BabyJubJub } from "./types";
 import { bigIntToHex, hexToBigInt } from "./utils";
 

@@ -1,6 +1,6 @@
 const fs = require("fs");
 // @ts-ignore
-import { buildPoseidonOpt as buildPoseidon } from "circomlibjs";
+import { buildPoseidonReference as buildPoseidon } from "circomlibjs";
 import { batchProveMembership, proveMembership } from "../src/prove";
 import {
   batchVerifyMembership,
@@ -8,7 +8,12 @@ import {
   verifyMembership,
   verifyMembershipZKP,
 } from "../src/verify";
-import { derDecode, hexToBigInt, publicKeyFromString } from "../src/utils";
+import {
+  derDecode,
+  hashEdwardsPublicKey,
+  hexToBigInt,
+  publicKeyFromString,
+} from "../src/utils";
 import { EdwardsPoint, WeierstrassPoint } from "../src/babyJubjub";
 import {
   computeMerkleProof,
@@ -75,12 +80,12 @@ describe("ECDSA membership proof generation and verification", () => {
         pathToCircuits,
       });
 
-      const expectedNullifier = hexToBigInt(
+      const expectedSigNullifier = hexToBigInt(
         poseidon.F.toString(poseidon([sig.s, sigNullifierRandomness]), 16)
       );
 
       expect(result.verified).toBe(true);
-      expect(result.consumedSigNullifiers).toEqual([expectedNullifier]);
+      expect(result.consumedSigNullifiers).toEqual([expectedSigNullifier]);
     });
 
     test("should generate and a valid membership proof with precomputed inputs", async () => {
@@ -324,7 +329,7 @@ describe("ECDSA membership proof generation and verification", () => {
       const pubKeyPoints = pubKeys.map(publicKeyFromString);
       const sigNullifierRandomness = BigInt(0);
       const pubKeyNullifierRandomness = BigInt(0);
-
+      const index = 2;
       const msgHash = BigInt("0");
       const sig = {
         r: hexToBigInt(
@@ -334,36 +339,46 @@ describe("ECDSA membership proof generation and verification", () => {
           "0370C60A23266F520C56DA088B4C4AFAAAF6BB1993A501980F6D8FB6F343984A"
         ),
       };
+      const poseidon = await buildPoseidon();
 
       const proof = await proveMembership({
         sig,
         msgHash,
         merkleProofArgs: {
           pubKeys: pubKeyPoints,
-          index: 2,
+          index,
         },
         sigNullifierRandomness,
         pubKeyNullifierRandomness,
         pathToCircuits,
       });
 
+      const expectedSigNullifier = hexToBigInt(
+        poseidon.F.toString(poseidon([sig.s, sigNullifierRandomness]), 16)
+      );
+      const pubKey = pubKeyPoints[index];
+      const pubKeyHash = await hashEdwardsPublicKey(
+        pubKey.toEdwards(),
+        poseidon
+      );
+      const expectedPubKeyNullifier = hexToBigInt(
+        poseidon.F.toString(
+          poseidon([pubKeyHash, pubKeyNullifierRandomness]),
+          16
+        )
+      );
+      const expectedPubKeyNullifierRandomnessHash = hexToBigInt(
+        poseidon.F.toString(poseidon([pubKeyNullifierRandomness]), 16)
+      );
+
       const publicSignals = getPublicSignalsFromMembershipZKP(proof.zkp);
 
-      expect(publicSignals.sigNullifier).toEqual(
-        BigInt(
-          "17825334909698573620993222371821585663772073121519814540615199066752100895281"
-        )
-      );
-      expect(publicSignals.pubKeyNullifier).toEqual(
-        BigInt(
-          "9949682763199094406947497597619206603576319427215228151667831375779683522772"
-        )
-      );
+      expect(publicSignals.sigNullifier).toEqual(expectedSigNullifier);
+      expect(publicSignals.pubKeyNullifier).toEqual(expectedPubKeyNullifier);
       expect(publicSignals.pubKeyNullifierRandomnessHash).toEqual(
-        BigInt(
-          "14744269619966411208579211824598458697587494354926760081771325075741142829156"
-        )
+        expectedPubKeyNullifierRandomnessHash
       );
+      // Precomputed values from Python implementation
       expect(publicSignals.merkleRoot).toEqual(
         BigInt(
           "1799182282238172949735919814155076722550339245418717182904975644657694908682"

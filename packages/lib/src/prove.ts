@@ -48,8 +48,8 @@ export const proveMembership = async ({
   }
 
   const timingUuid = uuidv4();
-  if (enableTiming) console.time(`Membership Proof Generation: ${timingUuid}`);
-  if (enableTiming) console.time(`T and U Generation: ${timingUuid}`);
+  enableTiming && console.time(`Membership Proof Generation: ${timingUuid}`);
+  enableTiming && console.time(`T and U Generation: ${timingUuid}`);
   let R, T, U;
   if (publicInputs) {
     ({ R, T, U } = publicInputs);
@@ -59,9 +59,9 @@ export const proveMembership = async ({
       : pubKey!;
     ({ R, T, U } = getPublicInputsFromSignature(sig, msgHash, resolvedPubKey));
   }
-  if (enableTiming) console.timeEnd(`T and U Generation: ${timingUuid}`);
+  enableTiming && console.timeEnd(`T and U Generation: ${timingUuid}`);
 
-  if (enableTiming) console.time(`Merkle Proof Generation: ${timingUuid}`);
+  enableTiming && console.time(`Merkle Proof Generation: ${timingUuid}`);
   let resolvedMerkleProof;
   if (merkleProof) {
     resolvedMerkleProof = merkleProof;
@@ -76,9 +76,9 @@ export const proveMembership = async ({
       hashFn
     );
   }
-  if (enableTiming) console.timeEnd(`Merkle Proof Generation: ${timingUuid}`);
+  enableTiming && console.timeEnd(`Merkle Proof Generation: ${timingUuid}`);
 
-  if (enableTiming) console.time(`ZK Proof Generation: ${timingUuid}`);
+  enableTiming && console.time(`ZK Proof Generation: ${timingUuid}`);
   const proofInputs: ZKPInputs = {
     s: sig.s,
     Tx: T.x,
@@ -92,9 +92,8 @@ export const proveMembership = async ({
     pubKeyNullifierRandomness: pubKeyNullifierRandomness,
   };
   const zkp = await generateMembershipZKP(proofInputs, pathToCircuits);
-  if (enableTiming) console.timeEnd(`ZK Proof Generation: ${timingUuid}`);
-  if (enableTiming)
-    console.timeEnd(`Membership Proof Generation: ${timingUuid}`);
+  enableTiming && console.timeEnd(`ZK Proof Generation: ${timingUuid}`);
+  enableTiming && console.timeEnd(`Membership Proof Generation: ${timingUuid}`);
 
   return {
     R,
@@ -160,8 +159,8 @@ export const batchProveMembership = async ({
     );
   }
 
-  if (enableTiming) console.time("Batch Membership Proof Generation");
-  if (enableTiming) console.time("Batch Merkle Proof Computation");
+  enableTiming && console.time("Batch Membership Proof Generation");
+  enableTiming && console.time("Batch Merkle Proof Computation");
   let resolvedMerkleProofs: MerkleProof[];
   let resolvedPubKeys = pubKeys;
   if (merkleProofs) {
@@ -178,7 +177,7 @@ export const batchProveMembership = async ({
       })
     );
   }
-  if (enableTiming) console.timeEnd("Batch Merkle Proof Computation");
+  enableTiming && console.timeEnd("Batch Merkle Proof Computation");
 
   const proofs = await Promise.all(
     sigs.map(async (sig, i) => {
@@ -195,7 +194,7 @@ export const batchProveMembership = async ({
       });
     })
   );
-  if (enableTiming) console.timeEnd("Batch Membership Proof Generation");
+  enableTiming && console.timeEnd("Batch Membership Proof Generation");
 
   return proofs;
 };
