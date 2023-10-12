@@ -150,9 +150,11 @@ describe("signature and key parsing utilities", () => {
 
     const proof = await proveMembership({
       sig,
-      pubKeys: pubKeyPoints,
-      index: 2,
       msgHash,
+      merkleProofArgs: {
+        pubKeys: pubKeyPoints,
+        index: 2,
+      },
       sigNullifierRandomness,
       pubKeyNullifierRandomness,
       pathToCircuits,
@@ -163,8 +165,6 @@ describe("signature and key parsing utilities", () => {
 
     expect(deserializedProof.R.equals(proof.R)).toBe(true);
     expect(deserializedProof.msgHash).toEqual(proof.msgHash);
-    expect(deserializedProof.T.equals(proof.T)).toBe(true);
-    expect(deserializedProof.U.equals(proof.U)).toBe(true);
     expect(deserializedProof.zkp).toEqual(proof.zkp);
 
     // snarkjs will not terminate this object automatically

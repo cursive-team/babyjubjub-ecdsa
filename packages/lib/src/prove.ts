@@ -1,76 +1,104 @@
 const snarkjs = require("snarkjs");
+import { v4 as uuidv4 } from "uuid";
 import {
   ZKP,
-  MembershipZKPInputs,
+  ZKPInputs,
   MembershipProof,
-  ProveMembershipArgs,
-  BatchProveMembershipArgs,
+  ProveArgs,
+  BatchProveArgs,
+  MerkleProof,
 } from "./types";
-import { getPublicInputsFromSignature, generateMerkleProof } from "./inputGen";
+import { getPublicInputsFromSignature, computeMerkleProof } from "./inputGen";
 import { isNode } from "./utils";
 
 /**
  * Generates an ECDSA membership proof for a given signature
  * Proof contains a ZKP as well as information needed for out of circuit verification
  * @param sig - The signature to generate the proof for
- * @param pubKeys - The list of public keys comprising the ZKP anonymity set
- * @param index - The index of the public key that generated the signature
  * @param msgHash - The hash of the message that was signed
- * @param sigNullifierRandomness - Optional nullifier randomness used to generate unique nullifiers for the signature
- * @param pubKeyNullifierRandomness - Optional nullifier randomness used to generate unique nullifiers for the public key
+ * @param publicInputs - Precomputed public inputs in Efficient ECDSA form
+ * @param pubKey - The public key used to sign the signature. Only needed if public inputs and merkle proof are not precomputed
+ * @param merkleProof - Precomputed merkle proof
+ * @param merkleProofArgs - Arguments to generate the merkle proof. Only needed if merkle proof is not precomputed
+ * @param sigNullifierRandomness - Must be random per application. Used to generate unique nullifiers for the signature
+ * @param pubKeyNullifierRandomness - Must be random per application. Used to generate unique nullifiers for the public key
  * @param pathToCircuits - The path to the circuits directory. Only needed for server side proving
- * @param hashFn - The hash function to use for the merkle tree. Defaults to Poseidon
+ * @param enableTiming - Whether or not to log timing information
  * @returns - The membership proof
  */
 export const proveMembership = async ({
   sig,
-  pubKeys,
-  index,
   msgHash,
+  publicInputs,
+  pubKey,
+  merkleProof,
+  merkleProofArgs,
   sigNullifierRandomness,
   pubKeyNullifierRandomness,
   pathToCircuits,
-  hashFn,
-}: ProveMembershipArgs): Promise<MembershipProof> => {
-  console.time("Membership Proof Generation");
-  console.time("T and U Generation");
-  const pubKey = pubKeys[index];
-  const { R, T, U } = getPublicInputsFromSignature(sig, msgHash, pubKey);
-  console.timeEnd("T and U Generation");
+  enableTiming,
+}: ProveArgs): Promise<MembershipProof> => {
+  if (!publicInputs && !merkleProofArgs && !pubKey) {
+    throw new Error(
+      "Must provide either public inputs, merkle proof args, or public key!"
+    );
+  }
+  if (!merkleProof && !merkleProofArgs) {
+    throw new Error("Must provide either merkle proof or merkle proof args!");
+  }
 
-  console.time("Merkle Proof Generation");
-  const edwardsPubKeys = await Promise.all(
-    pubKeys.map(async (pubKey) => pubKey.toEdwards())
-  );
-  const merkleProof = await generateMerkleProof(edwardsPubKeys, index, hashFn);
-  console.timeEnd("Merkle Proof Generation");
+  const timingUuid = uuidv4();
+  if (enableTiming) console.time(`Membership Proof Generation: ${timingUuid}`);
+  if (enableTiming) console.time(`T and U Generation: ${timingUuid}`);
+  let R, T, U;
+  if (publicInputs) {
+    ({ R, T, U } = publicInputs);
+  } else {
+    const resolvedPubKey = merkleProofArgs
+      ? merkleProofArgs.pubKeys[merkleProofArgs.index]
+      : pubKey!;
+    ({ R, T, U } = getPublicInputsFromSignature(sig, msgHash, resolvedPubKey));
+  }
+  if (enableTiming) console.timeEnd(`T and U Generation: ${timingUuid}`);
 
-  console.time("ZK Proof Generation");
-  const proofInputs: MembershipZKPInputs = {
+  if (enableTiming) console.time(`Merkle Proof Generation: ${timingUuid}`);
+  let resolvedMerkleProof;
+  if (merkleProof) {
+    resolvedMerkleProof = merkleProof;
+  } else {
+    const { pubKeys, index, hashFn } = merkleProofArgs!;
+    const edwardsPubKeys = await Promise.all(
+      pubKeys.map(async (pubKey) => pubKey.toEdwards())
+    );
+    resolvedMerkleProof = await computeMerkleProof(
+      edwardsPubKeys,
+      index,
+      hashFn
+    );
+  }
+  if (enableTiming) console.timeEnd(`Merkle Proof Generation: ${timingUuid}`);
+
+  if (enableTiming) console.time(`ZK Proof Generation: ${timingUuid}`);
+  const proofInputs: ZKPInputs = {
     s: sig.s,
     Tx: T.x,
     Ty: T.y,
     Ux: U.x,
     Uy: U.y,
-    root: merkleProof.root,
-    pathIndices: merkleProof.pathIndices,
-    siblings: merkleProof.siblings,
-    sigNullifierRandomness: sigNullifierRandomness
-      ? sigNullifierRandomness
-      : BigInt(0),
-    pubKeyNullifierRandomness: pubKeyNullifierRandomness
-      ? pubKeyNullifierRandomness
-      : BigInt(0),
+    root: resolvedMerkleProof.root,
+    pathIndices: resolvedMerkleProof.pathIndices,
+    siblings: resolvedMerkleProof.siblings,
+    sigNullifierRandomness: sigNullifierRandomness,
+    pubKeyNullifierRandomness: pubKeyNullifierRandomness,
   };
   const zkp = await generateMembershipZKP(proofInputs, pathToCircuits);
-  console.timeEnd("ZK Proof Generation");
-  console.timeEnd("Membership Proof Generation");
+  if (enableTiming) console.timeEnd(`ZK Proof Generation: ${timingUuid}`);
+  if (enableTiming)
+    console.timeEnd(`Membership Proof Generation: ${timingUuid}`);
 
   return {
     R,
     msgHash,
-    T,
-    U,
     zkp,
   };
 };
@@ -78,86 +106,96 @@ export const proveMembership = async ({
 /**
  * Generates ECDSA membership proofs for a list of signatures
  * Can only be used for the same list of public keys and fixed nullifier randomness
- * @param sigs - The list of signatures to generate proofs for
- * @param pubKeys - The list of public keys comprising the ZKP anonymity set
- * @param indices - The list of indices corresponding to the public keys that generated the signatures
- * @param msgHashes - The list of message hashes corresponding to the messages that were signed
- * @param sigNullifierRandomness - Optional nullifier randomness used to generate unique nullifiers for the signature
- * @param pubKeyNullifierRandomness - Optional nullifier randomness used to generate unique nullifiers for the public key
+ * @param sigs - The signature to generate the proof for
+ * @param msgHashes - The hash of the message that was signed
+ * @param publicInputs - Precomputed public inputs in Efficient ECDSA form
+ * @param pubKeys - The public key used to sign the signature. Only needed if public inputs and merkle proof are not precomputed
+ * @param merkleProofs - Precomputed merkle proof
+ * @param merkleProofArgs - Arguments to generate the merkle proof. Only needed if merkle proof is not precomputed
+ * @param sigNullifierRandomness - Must be random per application. Used to generate unique nullifiers for the signature
+ * @param pubKeyNullifierRandomness - Must be random per application. Used to generate unique nullifiers for the public key
  * @param pathToCircuits - The path to the circuits directory. Only needed for server side proving
- * @param hashFn - The hash function to use for the merkle tree. Defaults to Poseidon
+ * @param enableTiming - Whether or not to log timing information
  * @returns - The list of membership proofs
  */
 export const batchProveMembership = async ({
   sigs,
-  pubKeys,
-  indices,
   msgHashes,
+  publicInputs,
+  pubKeys,
+  merkleProofs,
+  merkleProofArgs,
   sigNullifierRandomness,
   pubKeyNullifierRandomness,
   pathToCircuits,
-  hashFn,
-}: BatchProveMembershipArgs): Promise<MembershipProof[]> => {
-  const numProofs = sigs.length;
-  if (numProofs !== indices.length || numProofs !== msgHashes.length) {
+  enableTiming,
+}: BatchProveArgs): Promise<MembershipProof[]> => {
+  if (!publicInputs && !merkleProofArgs && !pubKeys) {
     throw new Error(
-      "Must provide the same number of signatures, indices, and message hashes!"
+      "Must provide either public inputs, merkle proof args, or public key!"
+    );
+  }
+  if (!merkleProofs && !merkleProofArgs) {
+    throw new Error("Must provide either merkle proof or merkle proof args!");
+  }
+
+  const numProofs = sigs.length;
+  if (msgHashes.length !== numProofs) {
+    throw new Error(
+      "Number of message hashes must match number of signatures!"
+    );
+  }
+  if (publicInputs && publicInputs.length !== numProofs) {
+    throw new Error("Number of public inputs must match number of signatures!");
+  }
+  if (pubKeys && pubKeys.length !== numProofs) {
+    throw new Error("Number of public keys must match number of signatures!");
+  }
+  if (merkleProofs && merkleProofs.length !== numProofs) {
+    throw new Error("Number of merkle proofs must match number of signatures!");
+  }
+  if (merkleProofArgs && merkleProofArgs.indices.length !== numProofs) {
+    throw new Error(
+      "Number of merkle proof args must match number of signatures!"
     );
   }
 
-  console.time("Batch Membership Proof Generation");
-  const edwardsPubKeys = pubKeys.map((pubKey) => pubKey.toEdwards());
+  if (enableTiming) console.time("Batch Membership Proof Generation");
+  if (enableTiming) console.time("Batch Merkle Proof Computation");
+  let resolvedMerkleProofs: MerkleProof[];
+  let resolvedPubKeys = pubKeys;
+  if (merkleProofs) {
+    resolvedMerkleProofs = merkleProofs;
+  } else {
+    const { pubKeys, indices, hashFn } = merkleProofArgs!;
+    resolvedPubKeys = indices.map((index) => pubKeys[index]);
+    const edwardsPubKeys = await Promise.all(
+      pubKeys.map(async (pubKey) => pubKey.toEdwards())
+    );
+    resolvedMerkleProofs = await Promise.all(
+      indices.map(async (index) => {
+        return await computeMerkleProof(edwardsPubKeys, index, hashFn);
+      })
+    );
+  }
+  if (enableTiming) console.timeEnd("Batch Merkle Proof Computation");
 
   const proofs = await Promise.all(
     sigs.map(async (sig, i) => {
-      console.time(`Membership Proof Generation: ${i}`);
-      const index = indices[i];
-      const msgHash = msgHashes[i];
-
-      console.time(`T and U Generation: ${i}`);
-      const pubKey = pubKeys[index];
-      const { R, T, U } = getPublicInputsFromSignature(sig, msgHash, pubKey);
-      console.timeEnd(`T and U Generation: ${i}`);
-
-      console.time(`Merkle Proof Generation: ${i}`);
-      const merkleProof = await generateMerkleProof(
-        edwardsPubKeys,
-        index,
-        hashFn
-      );
-      console.timeEnd(`Merkle Proof Generation: ${i}`);
-
-      console.time(`ZK Proof Generation: ${i}`);
-      const proofInputs: MembershipZKPInputs = {
-        s: sig.s,
-        Tx: T.x,
-        Ty: T.y,
-        Ux: U.x,
-        Uy: U.y,
-        root: merkleProof.root,
-        pathIndices: merkleProof.pathIndices,
-        siblings: merkleProof.siblings,
-        sigNullifierRandomness: sigNullifierRandomness
-          ? sigNullifierRandomness
-          : BigInt(0),
-        pubKeyNullifierRandomness: pubKeyNullifierRandomness
-          ? pubKeyNullifierRandomness
-          : BigInt(0),
-      };
-      const zkp = await generateMembershipZKP(proofInputs, pathToCircuits);
-      console.timeEnd(`ZK Proof Generation: ${i}`);
-      console.timeEnd(`Membership Proof Generation: ${i}`);
-
-      return {
-        R,
-        msgHash,
-        T,
-        U,
-        zkp,
-      };
+      return await proveMembership({
+        sig,
+        msgHash: msgHashes[i],
+        publicInputs: publicInputs ? publicInputs[i] : undefined,
+        pubKey: resolvedPubKeys ? resolvedPubKeys[i] : undefined,
+        merkleProof: resolvedMerkleProofs[i],
+        sigNullifierRandomness,
+        pubKeyNullifierRandomness,
+        pathToCircuits,
+        enableTiming,
+      });
     })
   );
-  console.timeEnd("Batch Membership Proof Generation");
+  if (enableTiming) console.timeEnd("Batch Membership Proof Generation");
 
   return proofs;
 };
@@ -169,7 +207,7 @@ export const batchProveMembership = async ({
  * @returns - The membership ZKP
  */
 export const generateMembershipZKP = async (
-  proofInputs: MembershipZKPInputs,
+  proofInputs: ZKPInputs,
   pathToCircuits?: string
 ): Promise<ZKP> => {
   if (isNode() && pathToCircuits === undefined) {

@@ -1,164 +1,180 @@
 const snarkjs = require("snarkjs");
 const fs = require("fs");
+import { v4 as uuidv4 } from "uuid";
 import { EdwardsPoint } from "./babyJubjub";
 import { computeTUFromR } from "./ecdsa";
 import { computeMerkleRoot } from "./inputGen";
 import {
-  BatchVerifyMembershipArgs,
-  MembershipZKPPublicSignals,
-  VerifyMembershipArgs,
+  BatchVerifyArgs,
+  VerificationResult,
+  VerifyArgs,
   ZKP,
+  ZKPPublicSignals,
 } from "./types";
-import { isNode } from "./utils";
+import { areAllBigIntsDifferent, isNode } from "./utils";
 
 /**
  * Verifies an ECDSA membership proof
  * Performs in circuit and out of circuit verification
  * Based on the Efficient ECDSA formulation: https://personaelabs.org/posts/efficient-ecdsa-1/
- * Does not check/maintain the list of usedNullifiers, this must be done by the caller
+ * Does not maintain the list of usedSigNullifiers, this must be done by the caller
  * @param proof - The membership proof to verify
- * @param pubKeys - The list of public keys comprising the anonymity set for the proof
- * @param sigNullifierRandomness - Optional nullifier randomness used to generate unique nullifiers for signatures
+ * @param merkleRoot - Precomputed merkle root for the public key anonymity set
+ * @param merkleRootArgs - Arguments to generate the merkle root. Only needed if merkle root is not precomputed
+ * @param sigNullifierRandomness - Randomness used to generate signature nullifiers. Must be unique per application
+ * @param usedSigNullifiers - The list of used signature nullifiers. Used to prevent double proofs
  * @param pathToCircuits - The path to the verification key. Only needed for server side verification
- * @param hashFn - The hash function to use for the merkle tree. Defaults to Poseidon
- * @returns - A boolean indicating whether or not the proof is valid
+ * @param enableTiming - Whether or not to log timing information
+ * @returns - A boolean indicating whether or not the proof is valid, and a list of newly spent sig nullifiers
  */
 export const verifyMembership = async ({
   proof,
-  pubKeys,
+  merkleRoot,
+  merkleRootArgs,
   sigNullifierRandomness,
+  usedSigNullifiers,
   pathToCircuits,
-  hashFn,
-}: VerifyMembershipArgs): Promise<boolean> => {
+  enableTiming,
+}: VerifyArgs): Promise<VerificationResult> => {
   if (isNode() && pathToCircuits === undefined) {
     throw new Error(
       "Path to circuits must be provided for server side verification!"
     );
   }
+  if (!merkleRoot && !merkleRootArgs) {
+    throw new Error("Must provide either merkle root or merkle root args!");
+  }
 
-  console.time("Membership Proof Verification");
+  const timingUuid = uuidv4();
+  enableTiming && console.time(`Membership Proof Verification: ${timingUuid}`);
   const publicSignals = getPublicSignalsFromMembershipZKP(proof.zkp);
 
-  console.time("Merkle Root Verification");
-  const edwardsPubKeys = pubKeys.map((pubKey) => pubKey.toEdwards());
-  const computedMerkleRoot = await computeMerkleRoot(edwardsPubKeys, hashFn);
-  if (computedMerkleRoot !== publicSignals.merkleRoot) {
-    return false;
+  enableTiming && console.time(`Merkle Root Verification: ${timingUuid}`);
+  let resolvedMerkleRoot;
+  if (merkleRoot) {
+    resolvedMerkleRoot = merkleRoot;
+  } else {
+    const { pubKeys, hashFn } = merkleRootArgs!;
+    const edwardsPubKeys = pubKeys.map((pubKey) => pubKey.toEdwards());
+    resolvedMerkleRoot = await computeMerkleRoot(edwardsPubKeys, hashFn);
   }
-  console.timeEnd("Merkle Root Verification");
-
-  console.time("T and U Verification");
-  const { T, U } = publicSignals;
-  const { R, msgHash } = proof;
-  const { T: computedT, U: computedU } = computeTUFromR(
-    R.toWeierstrass(),
-    msgHash
-  );
-  if (!computedT.toEdwards().equals(T) || !computedU.toEdwards().equals(U)) {
-    return false;
+  if (resolvedMerkleRoot !== publicSignals.merkleRoot) {
+    return { verified: false };
   }
-  console.timeEnd("T and U Verification");
+  enableTiming && console.timeEnd(`Merkle Root Verification: ${timingUuid}`);
 
-  console.time("Nullifier Verification");
-  if (sigNullifierRandomness != publicSignals.sigNullifierRandomness) {
-    return false;
+  enableTiming && console.time(`T and U Verification: ${timingUuid}`);
+  const { T, U } = computeTUFromR(proof.R, proof.msgHash);
+  if (!T.equals(publicSignals.T) || !U.equals(publicSignals.U)) {
+    return { verified: false };
   }
-  console.timeEnd("Nullifier Verification");
+  enableTiming && console.timeEnd(`T and U Verification: ${timingUuid}`);
 
-  console.time("Fetching Verification Key");
+  enableTiming && console.time(`Nullifier Verification: ${timingUuid}`);
+  if (sigNullifierRandomness !== publicSignals.sigNullifierRandomness) {
+    return { verified: false };
+  }
+  if (
+    usedSigNullifiers &&
+    usedSigNullifiers.includes(publicSignals.sigNullifier)
+  ) {
+    return { verified: false };
+  }
+  enableTiming && console.timeEnd(`Nullifier Verification: ${timingUuid}`);
+
+  enableTiming && console.time(`Fetching Verification Key: ${timingUuid}`);
   const vKey = isNode()
     ? await getVerificationKeyFromFile(pathToCircuits!)
     : await getVerificationKeyFromUrl();
-  console.timeEnd("Fetching Verification Key");
+  enableTiming && console.timeEnd(`Fetching Verification Key: ${timingUuid}`);
 
-  console.time("ZK Proof Verification");
+  enableTiming && console.time(`ZK Proof Verification: ${timingUuid}`);
   const verified = await verifyMembershipZKP(vKey, proof.zkp);
-  console.timeEnd("ZK Proof Verification");
-  console.timeEnd("Membership Proof Verification");
+  if (!verified) {
+    return { verified: false };
+  }
+  enableTiming && console.timeEnd(`ZK Proof Verification: ${timingUuid}`);
+  enableTiming &&
+    console.timeEnd(`Membership Proof Verification: ${timingUuid}`);
 
-  return verified;
+  return {
+    verified: true,
+    consumedSigNullifiers: [publicSignals.sigNullifier],
+  };
 };
 
 /**
  * Verifies a batch of ECDSA membership proofs
  * Must be used with the same list of public keys and nullifier randomness
  * Based on the Efficient ECDSA formulation: https://personaelabs.org/posts/efficient-ecdsa-1/
- * Does not check/maintain the list of usedNullifiers, this must be done by the caller
+ * Does not maintain the list of usedSigNullifiers, this must be done by the caller
  * @param proofs - The membership proofs to verify
- * @param pubKeys - The list of public keys comprising the anonymity set for the proof
- * @param sigNullifierRandomness - Optional nullifier randomness used to generate unique nullifiers for signatures
+ * @param merkleRoot - Precomputed merkle root for the public key anonymity set
+ * @param merkleRootArgs - Arguments to generate the merkle root. Only needed if merkle root is not precomputed
+ * @param sigNullifierRandomness - Randomness used to generate signature nullifiers. Must be unique per application
+ * @param usedSigNullifiers - The list of used signature nullifiers. Used to prevent double proofs
  * @param pathToCircuits - The path to the verification key. Only needed for server side verification
- * @param hashFn - The hash function to use for the merkle tree. Defaults to Poseidon
- * @returns - A boolean indicating whether or not all of the proofs are valid
+ * @param enableTiming - Whether or not to log timing information
+ * @returns - A boolean indicating whether or not the proof is valid, and a list of newly spent sig nullifiers
  */
 export const batchVerifyMembership = async ({
   proofs,
-  pubKeys,
+  merkleRoot,
+  merkleRootArgs,
   sigNullifierRandomness,
+  usedSigNullifiers,
   pathToCircuits,
-  hashFn,
-}: BatchVerifyMembershipArgs): Promise<boolean> => {
+  enableTiming,
+}: BatchVerifyArgs): Promise<VerificationResult> => {
   if (isNode() && pathToCircuits === undefined) {
     throw new Error(
       "Path to circuits must be provided for server side verification!"
     );
   }
+  if (!merkleRoot && !merkleRootArgs) {
+    throw new Error("Must provide either merkle root or merkle root args!");
+  }
 
-  console.time("Batch Membership Proof Verification");
-  console.time("Batch Merkle Root Computation");
-  const edwardsPubKeys = pubKeys.map((pubKey) => pubKey.toEdwards());
-  const computedMerkleRoot = await computeMerkleRoot(edwardsPubKeys, hashFn);
-  console.timeEnd("Batch Merkle Root Computation");
+  enableTiming && console.time("Batch Membership Proof Verification");
+  enableTiming && console.time("Batch Merkle Root Computation");
+  let resolvedMerkleRoot: bigint;
+  if (merkleRoot) {
+    resolvedMerkleRoot = merkleRoot;
+  } else {
+    const { pubKeys, hashFn } = merkleRootArgs!;
+    const edwardsPubKeys = pubKeys.map((pubKey) => pubKey.toEdwards());
+    resolvedMerkleRoot = await computeMerkleRoot(edwardsPubKeys, hashFn);
+  }
+  enableTiming && console.timeEnd("Batch Merkle Root Computation");
 
-  console.time("Fetching Verification Key");
-  const vKey = isNode()
-    ? await getVerificationKeyFromFile(pathToCircuits!)
-    : await getVerificationKeyFromUrl();
-  console.timeEnd("Fetching Verification Key");
-
-  const verified = await Promise.all(
-    proofs.map(async (proof, i) => {
-      console.time(`Membership Proof Verification: ${i}`);
-      const publicSignals = getPublicSignalsFromMembershipZKP(proof.zkp);
-
-      console.time(`Merkle Root Verification: ${i}`);
-      if (computedMerkleRoot !== publicSignals.merkleRoot) {
-        return false;
-      }
-      console.timeEnd(`Merkle Root Verification: ${i}`);
-
-      console.time(`T and U Verification: ${i}`);
-      const { T, U } = publicSignals;
-      const { R, msgHash } = proof;
-      const { T: computedT, U: computedU } = computeTUFromR(
-        R.toWeierstrass(),
-        msgHash
-      );
-      if (
-        !computedT.toEdwards().equals(T) ||
-        !computedU.toEdwards().equals(U)
-      ) {
-        return false;
-      }
-      console.timeEnd(`T and U Verification: ${i}`);
-
-      console.time(`Nullifier Verification: ${i}`);
-      if (sigNullifierRandomness != publicSignals.sigNullifierRandomness) {
-        return false;
-      }
-      console.timeEnd(`Nullifier Verification: ${i}`);
-
-      console.time(`ZK Proof Verification: ${i}`);
-      const verified = await verifyMembershipZKP(vKey, proof.zkp);
-      console.timeEnd(`ZK Proof Verification: ${i}`);
-      console.timeEnd(`Membership Proof Verification: ${i}`);
-
-      return verified;
+  const verificationResults = await Promise.all(
+    proofs.map(async (proof) => {
+      return await verifyMembership({
+        proof,
+        merkleRoot: resolvedMerkleRoot,
+        sigNullifierRandomness,
+        usedSigNullifiers,
+        pathToCircuits,
+        enableTiming,
+      });
     })
   );
-  console.timeEnd("Batch Membership Proof Verification");
+  if (!verificationResults.every((r) => r.verified)) {
+    return { verified: false };
+  }
 
-  return verified.every((v) => v);
+  const allConsumedSigNullifiers: bigint[] = verificationResults.flatMap(
+    (result) => result.consumedSigNullifiers || []
+  );
+  if (!areAllBigIntsDifferent(allConsumedSigNullifiers)) {
+    return { verified: false };
+  }
+  enableTiming && console.timeEnd("Batch Membership Proof Verification");
+
+  return {
+    verified: true,
+    consumedSigNullifiers: allConsumedSigNullifiers,
+  };
 };
 
 /**
@@ -182,7 +198,7 @@ export const verifyMembershipZKP = async (
  */
 export const getPublicSignalsFromMembershipZKP = (
   zkp: ZKP
-): MembershipZKPPublicSignals => {
+): ZKPPublicSignals => {
   const publicSignals = zkp.publicSignals;
 
   return {

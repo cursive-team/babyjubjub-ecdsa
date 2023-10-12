@@ -1,6 +1,6 @@
 const ECSignature = require("elliptic/lib/elliptic/ec/signature");
 const BN = require("bn.js");
-import { WeierstrassPoint, babyjubjub } from "./babyJubjub";
+import { EdwardsPoint, WeierstrassPoint, babyjubjub } from "./babyJubjub";
 import { Signature } from "./types";
 
 /**
@@ -101,14 +101,18 @@ export const recoverPubKeyIndexFromSignature = (
  * @returns - The public parameters T, U
  */
 export const computeTUFromR = (
-  R: WeierstrassPoint,
+  R: EdwardsPoint,
   msgHash: bigint
-): { T: WeierstrassPoint; U: WeierstrassPoint } => {
+): { T: EdwardsPoint; U: EdwardsPoint } => {
   const Fs = babyjubjub.Fs;
 
-  const r = R.x % Fs.p;
+  const shortR = R.toWeierstrass();
+  const r = shortR.x % Fs.p;
   const rInv = Fs.inv(r);
-  const ecR = babyjubjub.ec.curve.point(R.x.toString(16), R.y.toString(16));
+  const ecR = babyjubjub.ec.curve.point(
+    shortR.x.toString(16),
+    shortR.y.toString(16)
+  );
   const ecT = ecR.mul(rInv.toString(16));
   const T = WeierstrassPoint.fromEllipticPoint(ecT);
   const G = babyjubjub.ec.curve.g;
@@ -116,5 +120,5 @@ export const computeTUFromR = (
   const ecU = G.mul(rInvm.toString(16));
   const U = WeierstrassPoint.fromEllipticPoint(ecU);
 
-  return { T, U };
+  return { T: T.toEdwards(), U: U.toEdwards() };
 };
