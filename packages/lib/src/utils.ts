@@ -1,7 +1,7 @@
+// @ts-ignore
+import { buildPoseidonReference as buildPoseidon } from "circomlibjs";
 import { EdwardsPoint, WeierstrassPoint } from "./babyJubjub";
 import { MembershipProof, Signature } from "./types";
-// @ts-ignore
-import { buildPoseidonOpt as buildPoseidon } from "circomlibjs";
 
 /**
  * DER decodes a signature

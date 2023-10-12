@@ -1,3 +1,5 @@
+// @ts-ignore
+import { buildPoseidonReference as buildPoseidon } from "circomlibjs";
 import {
   bigIntToBytes,
   bigIntToHex,
@@ -12,8 +14,6 @@ import {
   serializeMembershipProof,
 } from "../src/utils";
 import { EdwardsPoint, WeierstrassPoint } from "../src/babyJubjub";
-// @ts-ignore
-import { buildPoseidonOpt as buildPoseidon } from "circomlibjs";
 import { proveMembership } from "../src/prove";
 
 // All magic expected values are based on a combination of values

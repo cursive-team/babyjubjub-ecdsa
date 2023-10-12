@@ -1,5 +1,5 @@
 // @ts-ignore
-import { buildPoseidonOpt as buildPoseidon } from "circomlibjs";
+import { buildPoseidonReference as buildPoseidon } from "circomlibjs";
 import {
   MERKLE_TREE_DEPTH,
   computeMerkleProof,

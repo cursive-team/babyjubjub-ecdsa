@@ -1,6 +1,6 @@
 const BN = require("bn.js");
 // @ts-ignore
-import { buildPoseidonOpt as buildPoseidon } from "circomlibjs";
+import { buildPoseidonReference as buildPoseidon } from "circomlibjs";
 import { EdwardsPoint, WeierstrassPoint, babyjubjub } from "./babyJubjub";
 import { Signature, MerkleProof } from "./types";
 import { hashEdwardsPublicKey, hexToBigInt } from "./utils";

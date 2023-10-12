@@ -66,9 +66,8 @@ template PubKeyMembership(nLevels) {
     pubKeyNullifierHash.inputs[1] <== pubKeyNullifierRandomness;
 
     // pubKeyNullifierRandomnessHash = hash(pubKeyNullifierRandomness, pubKeyNullifierRandomness)
-    component pubKeyNullifierRandomnessHasher = Poseidon(2);
+    component pubKeyNullifierRandomnessHasher = Poseidon(1);
     pubKeyNullifierRandomnessHasher.inputs[0] <== pubKeyNullifierRandomness;
-    pubKeyNullifierRandomnessHasher.inputs[1] <== pubKeyNullifierRandomness;
 
     sigNullifier <== sigNullifierHash.out;
     pubKeyNullifier <== pubKeyNullifierHash.out;
