@@ -8,7 +8,7 @@ import { MembershipProof, Signature } from "./types";
  * @param encodedSig - The encoded signature
  * @returns - The decoded signature
  */
-export const derDecode = (encodedSig: string): Signature => {
+export const derDecodeSignature = (encodedSig: string): Signature => {
   const r_length = parseInt(encodedSig.slice(6, 8), 16) * 2; // Multiply by 2 to get length in hex characters
   const s_length =
     parseInt(encodedSig.slice(10 + r_length, 12 + r_length), 16) * 2;

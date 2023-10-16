@@ -65,6 +65,30 @@ describe("javascript signature verification", () => {
 
     expect(verifyEcdsaSignature(sig, msgHash, pubKey)).toBe(true);
   });
+
+  test("should verify a baby jubjub ecdsa signature 3", () => {
+    const pubKey = new WeierstrassPoint(
+      BigInt(
+        "3232533026113810378959142444695349421501562423203727069041340448447821565406"
+      ),
+      BigInt(
+        "2188348859066493967748283765357824083446977800414462976475976389468050954576"
+      )
+    );
+    const msgHash = BigInt(
+      "2946972996217835208449517111206100981106410880664713281589395314649921690550"
+    );
+    const sig = {
+      r: BigInt(
+        "1840783889620414587148889492823509056116889771324083520524283336613943085117"
+      ),
+      s: BigInt(
+        "1739665441663252318720166579941834138245075960720774698623992586667777500452"
+      ),
+    };
+
+    expect(verifyEcdsaSignature(sig, msgHash, pubKey)).toBe(true);
+  });
 });
 
 // Tests BabyJubjub ECDSA public key recovery in Javascript

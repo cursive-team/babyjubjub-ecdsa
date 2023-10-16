@@ -5,7 +5,7 @@ import {
   bigIntToHex,
   bytesToBigInt,
   bytesToHex,
-  derDecode,
+  derDecodeSignature,
   deserializeMembershipProof,
   hashEdwardsPublicKey,
   hexToBigInt,
@@ -32,7 +32,7 @@ describe("signature and key parsing utilities", () => {
       "03872AABF9BE3935EF255FDB847A09E1789990BE85C3C368589D7693D0E5B36F"
     );
 
-    const parsedSig = derDecode(encodedSig);
+    const parsedSig = derDecodeSignature(encodedSig);
 
     expect(parsedSig.r).toEqual(expectedr);
     expect(parsedSig.s).toEqual(expecteds);
@@ -49,7 +49,7 @@ describe("signature and key parsing utilities", () => {
       "04F7B2BCA543DEC95D6F82BC355C8E99F34DA07DE229B3A5D32999AB515F18E8"
     );
 
-    const parsedSig = derDecode(encodedSig);
+    const parsedSig = derDecodeSignature(encodedSig);
 
     expect(parsedSig.r).toEqual(expectedr);
     expect(parsedSig.s).toEqual(expecteds);
@@ -66,7 +66,7 @@ describe("signature and key parsing utilities", () => {
       "01E8390CB9EF3688E2F319C0D08BB5DC11442BA9A93453660CD86B3728D0C106"
     );
 
-    const parsedSig = derDecode(encodedSig);
+    const parsedSig = derDecodeSignature(encodedSig);
 
     expect(parsedSig.r).toEqual(expectedr);
     expect(parsedSig.s).toEqual(expecteds);

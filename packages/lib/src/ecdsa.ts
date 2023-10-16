@@ -2,6 +2,7 @@ const ECSignature = require("elliptic/lib/elliptic/ec/signature");
 const BN = require("bn.js");
 import { EdwardsPoint, WeierstrassPoint, babyjubjub } from "./babyJubjub";
 import { Signature } from "./types";
+import { bigIntToHex } from "./utils";
 
 /**
  * Verifies an ECDSA signature on the baby jubjub curve in Javascript
@@ -19,13 +20,35 @@ export const verifyEcdsaSignature = (
     r: sig.r.toString(16),
     s: sig.s.toString(16),
   });
+
   const pubKeyPoint = babyjubjub.ec.curve.point(
     pubKey.x.toString(16),
     pubKey.y.toString(16)
   );
   const ecPubKey = babyjubjub.ec.keyFromPublic(pubKeyPoint);
 
-  return babyjubjub.ec.verify(msgHash, ecSignature, ecPubKey);
+  // This addresses a quirk of the ellptic.js library where
+  // the message hash is padded oddly. For some reason, the
+  // padding is based on the byte length of the message hash * 8
+  // rather than the bit length, which means the padding is
+  // incorrect when we have a message hash that is not a multiple
+  // of 8 bits. This addresses that issue by padding the message
+  // hash so its bit length is a multiple of 8.
+  // https://github.com/indutny/elliptic/blob/43ac7f230069bd1575e1e4a58394a512303ba803/lib/elliptic/ec/index.js#L82
+  let msgHashPadded = msgHash;
+  const msgHashBN = new BN(bigIntToHex(msgHash), 16);
+  const delta = msgHashBN.byteLength() * 8 - babyjubjub.ec.n.bitLength();
+  if (delta > 0) {
+    msgHashPadded = BigInt(
+      "0b" + msgHash.toString(2).padEnd(msgHashBN.byteLength() * 8, "0")
+    );
+  }
+
+  return babyjubjub.ec.verify(
+    bigIntToHex(msgHashPadded),
+    ecSignature,
+    ecPubKey
+  );
 };
 
 /**

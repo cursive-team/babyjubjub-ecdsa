@@ -9,7 +9,7 @@ import {
   verifyMembershipZKP,
 } from "../src/verify";
 import {
-  derDecode,
+  derDecodeSignature,
   hashEdwardsPublicKey,
   hexToBigInt,
   publicKeyFromString,
@@ -226,7 +226,7 @@ describe("ECDSA membership proof generation and verification", () => {
     test("should generate and verify a membership proof with encoded signatures and nullifier randomness 0", async () => {
       const encodedSig =
         "30440220036E3AD3E9358B8299A60150BB925DEF60519861DB29E6468366ABE441F04C71022003872AABF9BE3935EF255FDB847A09E1789990BE85C3C368589D7693D0E5B36F";
-      const sig = derDecode(encodedSig);
+      const sig = derDecodeSignature(encodedSig);
 
       const proof = await proveMembership({
         sig,
@@ -255,7 +255,7 @@ describe("ECDSA membership proof generation and verification", () => {
     test("should generate and verify a membership proof with encoded signatures and nullifier randomness 1", async () => {
       const encodedSig =
         "30440220050AFA65DFD6E8709364DCF739FBAF2D6B436F84ADD5296BEE38BC65FA116912022001E8390CB9EF3688E2F319C0D08BB5DC11442BA9A93453660CD86B3728D0C106";
-      const sig = derDecode(encodedSig);
+      const sig = derDecodeSignature(encodedSig);
 
       const proof = await proveMembership({
         sig,
@@ -290,7 +290,7 @@ describe("ECDSA membership proof generation and verification", () => {
         "30440220017705D8D42EA7B179DCB1BB9ED1B37EB0F9A11DA2990E1B85C78D6C2132C46A0220021D258DFA097C255111C42DF04FC80572BE5E2173696FFF05A9B190A7C57FFA",
         "3044022001EA5ADC37063DC524E497A3A62D19A918519803FC7B041057D4CDD71579538C022003BD5A46DC348D1A1CA0AE424BF1011A517E2DA13562A083390F409E3C66B31B",
       ];
-      const sigs = encodedSigs.map(derDecode);
+      const sigs = encodedSigs.map(derDecodeSignature);
 
       const proofs = await batchProveMembership({
         sigs,
