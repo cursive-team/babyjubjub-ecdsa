@@ -7,6 +7,7 @@ export type BabyJubJub = {
   Fb: ZqField;
   Fs: ZqField;
   cofactor: number;
+  scalarFieldBitLength: number;
 };
 
 export type Signature = {

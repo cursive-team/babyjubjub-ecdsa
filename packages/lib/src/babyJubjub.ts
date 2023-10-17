@@ -33,12 +33,14 @@ const scalarField = new ZqField(
   "2736030358979909402780800718157159386076813972158567259200215660948447373041"
 );
 const cofactor = 8;
+const scalarFieldBitLength = 251;
 
 export const babyjubjub: BabyJubJub = {
   ec,
   Fb: baseField,
   Fs: scalarField,
   cofactor,
+  scalarFieldBitLength,
 };
 
 export interface CurvePoint {
