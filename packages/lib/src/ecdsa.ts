@@ -7,7 +7,8 @@ import { bigIntToHex } from "./utils";
 /**
  * Verifies an ECDSA signature on the baby jubjub curve in Javascript
  * @param sig - The signature to verify
- * @param msgHash - The hash of the message that was signed
+ * @param msgHash - The hash of the message that was signed. We expect the
+ * hash to be truncated, i.e. less than or equal to 251 bits in length
  * @param pubKey - The public key of the signer in Short Weierstrass form
  * @returns A boolean indicating whether or not the signature is valid
  */
@@ -16,6 +17,12 @@ export const verifyEcdsaSignature = (
   msgHash: bigint,
   pubKey: WeierstrassPoint
 ): boolean => {
+  if (msgHash.toString(2).length > babyjubjub.scalarFieldBitLength) {
+    throw new Error(
+      "Message hash must be less than or equal to 251 bits in length!"
+    );
+  }
+
   const ecSignature = new ECSignature({
     r: sig.r.toString(16),
     s: sig.s.toString(16),
@@ -28,20 +35,20 @@ export const verifyEcdsaSignature = (
   const ecPubKey = babyjubjub.ec.keyFromPublic(pubKeyPoint);
 
   // This addresses a quirk of the ellptic.js library where
-  // the message hash is padded oddly. For some reason, the
-  // padding is based on the byte length of the message hash * 8
-  // rather than the bit length, which means the padding is
+  // the message hash is truncated oddly. For some reason, the
+  // truncation is based on the byte length of the message hash * 8
+  // rather than the bit length, which means the truncation is
   // incorrect when we have a message hash that is not a multiple
   // of 8 bits. This addresses that issue by padding the message
-  // hash so its bit length is a multiple of 8.
+  // with some zeros which will be truncated by the library.
   // https://github.com/indutny/elliptic/blob/43ac7f230069bd1575e1e4a58394a512303ba803/lib/elliptic/ec/index.js#L82
   let msgHashPadded = msgHash;
   const msgHashBN = new BN(bigIntToHex(msgHash), 16);
   const delta = msgHashBN.byteLength() * 8 - babyjubjub.ec.n.bitLength();
+  // Given that we expect the message hash to be truncated to at most 251 bits,
+  // the following condition is only true if delta is equal to 5
   if (delta > 0) {
-    msgHashPadded = BigInt(
-      "0b" + msgHash.toString(2).padEnd(msgHashBN.byteLength() * 8, "0")
-    );
+    msgHashPadded = BigInt("0b" + msgHash.toString(2) + "0".repeat(delta));
   }
 
   return babyjubjub.ec.verify(
