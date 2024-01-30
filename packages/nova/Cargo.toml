@@ -1,0 +1,37 @@
+[package]
+name = "babyjubjub-ecdsa-nova"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "params_gen"
+path = "src/bin/params_gen.rs"
+
+[dependencies]
+nova-scotia = { git = "https://github.com/nalinbhardwaj/Nova-Scotia/" }
+nova-snark = "0.23.0"
+serde = "1.0.190"
+serde_json = "1.0.107"
+clap = { version = "4.4.7", features = ["derive"] }
+flate2 = "1.0.28"
+
+[dev-dependencies]
+criterion = "0.4.0"
+
+[[bench]]
+name = "fold_10"
+path = "benches/fold_10.rs"
+harness = false
+
+[[bench]]
+name = "fold_100"
+path = "benches/fold_100.rs"
+harness = false
+
+[[bench]]
+name = "compress_fold"
+path = "benches/compress_fold.rs"
+harness = false
