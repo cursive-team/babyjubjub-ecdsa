@@ -9,7 +9,7 @@ import { sha256 } from "js-sha256";
 /**
  * Compute the hash of a message using the ECDSA algorithm
  * @param msg
- * @returns bigint hash
+ * @returns hash as a hex string
  */
 const getECDSAMessageHash = (msg: string | Buffer): string => {
   let msgBuffer;
