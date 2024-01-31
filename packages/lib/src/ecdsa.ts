@@ -1,38 +1,35 @@
-const ECSignature = require("elliptic/lib/elliptic/ec/signature");
 const BN = require("bn.js");
+const ECSignature = require("elliptic/lib/elliptic/ec/signature");
+
 import { EdwardsPoint, WeierstrassPoint, babyjubjub } from "./babyJubjub";
 import { Signature } from "./types";
-import { bigIntToHex } from "./utils";
+import { hexToBigInt, bigIntToHex, derDecodeSignature } from "./utils";
+import { sha256 } from "js-sha256";
 
 /**
- * Verifies an ECDSA signature on the baby jubjub curve in Javascript
- * @param sig - The signature to verify
- * @param msgHash - The hash of the message that was signed. We expect the
- * hash to be truncated, i.e. less than or equal to 251 bits in length
- * @param pubKey - The public key of the signer in Short Weierstrass form
- * @returns A boolean indicating whether or not the signature is valid
+ * Compute the hash of a message using the ECDSA algorithm
+ * @param msg
+ * @returns bigint hash
  */
-export const verifyEcdsaSignature = (
-  sig: Signature,
-  msgHash: bigint,
-  pubKey: WeierstrassPoint
-): boolean => {
-  if (msgHash.toString(2).length > babyjubjub.scalarFieldBitLength) {
-    throw new Error(
-      "Message hash must be less than or equal to 251 bits in length!"
-    );
+const getECDSAMessageHash = (msg: string | Buffer): string => {
+  let msgBuffer;
+  if (typeof msg === "string") {
+    msgBuffer = Buffer.from(msg, "utf-8");
+  } else {
+    msgBuffer = msg;
   }
+  const hasher = sha256.create();
+  const hash = hasher.update(msgBuffer).hex();
 
-  const ecSignature = new ECSignature({
-    r: sig.r.toString(16),
-    s: sig.s.toString(16),
-  });
-
-  const pubKeyPoint = babyjubjub.ec.curve.point(
-    pubKey.x.toString(16),
-    pubKey.y.toString(16)
-  );
-  const ecPubKey = babyjubjub.ec.keyFromPublic(pubKeyPoint);
+  // As part of the ECDSA algorithm, we truncate the hash to its left n bits,
+  // where n is the bit length of the order of the curve.
+  // Truncation includes any leading zeros, so we first pad the hash to the full digest length
+  const HASH_DIGEST_LENGTH = 256;
+  const hashBits = hexToBigInt(hash)
+    .toString(2)
+    .padStart(HASH_DIGEST_LENGTH, "0");
+  const truncatedBits = hashBits.slice(0, babyjubjub.scalarFieldBitLength);
+  const msgHash = BigInt("0b" + truncatedBits);
 
   // This addresses a quirk of the ellptic.js library where
   // the message hash is truncated oddly. For some reason, the
@@ -45,16 +42,73 @@ export const verifyEcdsaSignature = (
   let msgHashPadded = msgHash;
   const msgHashBN = new BN(bigIntToHex(msgHash), 16);
   const delta = msgHashBN.byteLength() * 8 - babyjubjub.ec.n.bitLength();
+
   // Given that we expect the message hash to be truncated to at most 251 bits,
   // the following condition is only true if delta is equal to 5
   if (delta > 0) {
     msgHashPadded = BigInt("0b" + msgHash.toString(2) + "0".repeat(delta));
   }
 
+  return bigIntToHex(msgHashPadded);
+};
+
+/**
+ * Generates a new key pair for the baby jubjub curve
+ * @returns verifyingKey, signingKey (pubKey and privKey)
+ */
+export const generateSignatureKeyPair = (): {
+  signingKey: string;
+  verifyingKey: string;
+} => {
+  const keyPair = babyjubjub.ec.genKeyPair();
+
+  const pubKey = keyPair.getPublic();
+  const privKey = keyPair.getPrivate();
+
+  return {
+    verifyingKey: pubKey.encode("hex"),
+    signingKey: privKey.toString("hex"),
+  };
+};
+
+/**
+ * Signs a message using the baby jubjub curve
+ * @param signingKey - The private key, hex encoded
+ * @param data - The message to sign
+ * @returns The signature in DER format, hex encoded
+ */
+export const sign = (signingKey: string, data: string | Buffer): string => {
+  const key = babyjubjub.ec.keyFromPrivate(signingKey, "hex");
+  const msgHash = getECDSAMessageHash(data);
+  const signature = key.sign(msgHash, "hex", {
+    canonical: true,
+  });
+  const signatureDER = signature.toDER();
+  return Buffer.from(signatureDER).toString("hex");
+};
+
+/**
+ * Verifies an ECDSA signature on the baby jubjub curve
+ * @param verifyingKey - The public key of the signer, hex encoded
+ * @param data - The message that was signed
+ * @param signature - The signature in DER format, hex encoded
+ * @returns boolean indicating whether or not the signature is valid
+ */
+export const verify = (
+  verifyingKey: string,
+  data: string | Buffer,
+  signature: string
+): boolean => {
+  const key = babyjubjub.ec.keyFromPublic(verifyingKey, "hex");
+  const msgHash = getECDSAMessageHash(data);
+  const sig = derDecodeSignature(signature);
   return babyjubjub.ec.verify(
-    bigIntToHex(msgHashPadded),
-    ecSignature,
-    ecPubKey
+    msgHash,
+    new ECSignature({
+      r: sig.r.toString(16),
+      s: sig.s.toString(16),
+    }),
+    key
   );
 };
 

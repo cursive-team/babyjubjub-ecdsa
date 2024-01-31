@@ -106,6 +106,11 @@ export const bigIntToBytes = (bigInt: bigint): Uint8Array => {
   return hexToBytes(bigIntToHex(bigInt));
 };
 
+export const extendHexString = (hex: string, desiredLength: number): string => {
+  const zeros = "0".repeat(desiredLength - hex.length);
+  return zeros + hex;
+};
+
 export const areAllBigIntsTheSame = (bigInts: bigint[]): boolean => {
   return bigInts.every((bigInt) => bigInt === bigInts[0]);
 };
