@@ -11,7 +11,7 @@ import { sha256 } from "js-sha256";
  * @param msg
  * @returns hash as a hex string
  */
-const getECDSAMessageHash = (msg: string | Buffer): string => {
+export const getECDSAMessageHash = (msg: string | Buffer): string => {
   let msgBuffer;
   if (typeof msg === "string") {
     msgBuffer = Buffer.from(msg, "utf-8");
