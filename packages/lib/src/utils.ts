@@ -4,6 +4,15 @@ import { EdwardsPoint, WeierstrassPoint } from "./babyJubjub";
 import { MembershipProof, Signature } from "./types";
 
 /**
+ * Checks if a string is a hex string
+ * @param str - The string to check
+ * @returns Whether or not the string is a hex string
+ */
+export const isHexString = (str: string): boolean => {
+  return /^[0-9a-fA-F]+$/.test(str);
+};
+
+/**
  * DER decodes a signature
  * @param encodedSig - The encoded signature
  * @returns - The decoded signature

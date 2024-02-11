@@ -3,7 +3,12 @@ const ECSignature = require("elliptic/lib/elliptic/ec/signature");
 
 import { EdwardsPoint, WeierstrassPoint, babyjubjub } from "./babyJubjub";
 import { Signature } from "./types";
-import { hexToBigInt, bigIntToHex, derDecodeSignature } from "./utils";
+import {
+  hexToBigInt,
+  bigIntToHex,
+  derDecodeSignature,
+  isHexString,
+} from "./utils";
 import { sha256 } from "js-sha256";
 
 /**
@@ -11,13 +16,12 @@ import { sha256 } from "js-sha256";
  * @param msg
  * @returns hash as a hex string
  */
-export const getECDSAMessageHash = (msg: string | Buffer): string => {
-  let msgBuffer;
-  if (typeof msg === "string") {
-    msgBuffer = Buffer.from(msg, "utf-8");
-  } else {
-    msgBuffer = msg;
+export const getECDSAMessageHash = (msg: string): string => {
+  if (!isHexString(msg)) {
+    throw new Error("Message must be a hex string to hash!");
   }
+
+  const msgBuffer = Buffer.from(msg, "hex");
   const hasher = sha256.create();
   const hash = hasher.update(msgBuffer).hex();
 
@@ -83,7 +87,7 @@ export const generateSignatureKeyPair = (): {
  * @param data - The message to sign
  * @returns The signature in DER format, hex encoded
  */
-export const sign = (signingKey: string, data: string | Buffer): string => {
+export const sign = (signingKey: string, data: string): string => {
   const key = babyjubjub.ec.keyFromPrivate(signingKey, "hex");
   const msgHash = getECDSAMessageHash(data);
   const paddedMsgHash = padECDSAMessageHash(msgHash); // See comment on padECDSAMessageHash - only needed for elliptic.js
@@ -103,7 +107,7 @@ export const sign = (signingKey: string, data: string | Buffer): string => {
  */
 export const verify = (
   verifyingKey: string,
-  data: string | Buffer,
+  data: string,
   signature: string
 ): boolean => {
   const key = babyjubjub.ec.keyFromPublic(verifyingKey, "hex");

@@ -22,7 +22,7 @@ describe("javascript signature verification", () => {
 
   test("should correctly sign and verify", () => {
     const keyPair = generateSignatureKeyPair();
-    const msg = "hello world";
+    const msg = "abcd1234";
     const signature = sign(keyPair.signingKey, msg);
     expect(verify(keyPair.verifyingKey, msg, signature)).toEqual(true);
   });
@@ -30,15 +30,15 @@ describe("javascript signature verification", () => {
   test("should correctly not verify with different keypair", () => {
     const keyPair = generateSignatureKeyPair();
     const keyPair2 = generateSignatureKeyPair();
-    const msg = "hello world";
+    const msg = "abcd1234";
     const signature = sign(keyPair.signingKey, msg);
     expect(verify(keyPair2.verifyingKey, msg, signature)).toEqual(false);
   });
 
   test("should correctly not verify with different message", () => {
     const keyPair = generateSignatureKeyPair();
-    const msg = "hello world";
-    const msg2 = "hello world2";
+    const msg = "abcd1234";
+    const msg2 = "1234abcd";
     const signature = sign(keyPair.signingKey, msg);
     expect(verify(keyPair.verifyingKey, msg2, signature)).toEqual(false);
   });
