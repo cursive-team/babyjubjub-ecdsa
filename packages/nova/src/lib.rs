@@ -5,6 +5,9 @@ pub mod inputs;
 pub mod nova;
 pub mod params;
 pub mod proof;
+#[cfg(target_family = "wasm")]
+pub mod wasm;
+
 
 pub type G1 = provider::bn256_grumpkin::bn256::Point;
 pub type G2 = provider::bn256_grumpkin::grumpkin::Point;
