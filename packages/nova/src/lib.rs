@@ -1,5 +1,6 @@
 use nova_scotia::{circom::circuit::CircomCircuit, C1, C2, F};
 use nova_snark::{provider, traits::circuit::TrivialTestCircuit, PublicParams, RecursiveSNARK};
+use serde::{Deserialize, Serialize};
 
 pub mod inputs;
 pub mod nova;
@@ -18,3 +19,4 @@ pub type NovaProof = RecursiveSNARK<G1, G2, CircomCircuit<Fr>, TrivialTestCircui
 pub const DEFAULT_PARAMS_PATH: &str = "circuits/artifacts/public_params.json";
 pub const DEFAULT_R1CS_PATH: &str = "circuits/artifacts/folded.r1cs";
 pub const DEFAULT_WC_PATH: &str = "circuits/artifacts/folded.wasm";
+pub const DEFAULT_TREE_DEPTH: usize = 8;

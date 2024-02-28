@@ -1,5 +1,6 @@
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
 
 /**
  * Use the example pub inputs given in ../../circuits/instances/example_input.json
@@ -32,4 +33,40 @@ pub fn get_example_input() -> HashMap<String, Value> {
     inputs.insert(String::from("pubKeyNullifierRandomness"), json!("0"));
 
     inputs
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Membership<const D: usize> {
+    pub s: String,
+    pub root: String,
+    #[serde(rename = "Tx")]
+    pub t_x: String,
+    #[serde(rename = "Tx")]
+    pub t_y: String,
+    #[serde(rename = "Ux")]
+    pub u_x: String,
+    #[serde(rename = "Uy")]
+    pub u_y: String,
+    pub path_indices: Vec<String>,
+    pub siblings: Vec<String>,
+    pub sig_nullifier_randomness: String,
+    pub pub_key_nullifier_randomness: String,
+}
+
+impl<const D: usize> Membership<D> {
+    pub fn to_inputs(&self) -> HashMap<String, Value> {
+        let mut inputs = HashMap::new();
+        inputs.insert(String::from("s"), json!(self.s));
+        inputs.insert(String::from("root"), json!(self.root));
+        inputs.insert(String::from("Tx"), json!(self.t_x));
+        inputs.insert(String::from("Ty"), json!(self.t_y));
+        inputs.insert(String::from("Ux"), json!(self.u_x));
+        inputs.insert(String::from("Uy"), json!(self.u_y));
+        inputs.insert(String::from("pathIndices"), json!(self.path_indices));
+        inputs.insert(String::from("siblings"), json!(self.siblings));
+        inputs.insert(String::from("sigNullifierRandomness"), json!(self.sig_nullifier_randomness));
+        inputs.insert(String::from("pubKeyNullifierRandomness"), json!(self.pub_key_nullifier_randomness));
+        inputs
+    }
 }
