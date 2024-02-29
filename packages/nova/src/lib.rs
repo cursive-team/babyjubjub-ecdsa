@@ -3,8 +3,11 @@ use nova_snark::{provider, traits::circuit::TrivialTestCircuit, PublicParams, Re
 use serde::{Deserialize, Serialize};
 
 pub mod inputs;
+#[cfg(not(target_family = "wasm"))]
 pub mod nova;
+#[cfg(not(target_family = "wasm"))]
 pub mod params;
+#[cfg(not(target_family = "wasm"))]
 pub mod proof;
 #[cfg(target_family = "wasm")]
 pub mod wasm;

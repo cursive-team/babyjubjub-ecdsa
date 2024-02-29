@@ -163,9 +163,7 @@ mod test {
         assert!(res.is_ok());
         println!("Compressed proof verified: {:?}", res.unwrap());
         let serialized = serde_json::to_string(&compressed_proof).unwrap();
-        let proof_path = std::env::current_dir()
-            .unwrap()
-            .join("compressed.proof");
+        let proof_path = std::env::current_dir().unwrap().join("compressed.proof");
         std::fs::write(proof_path, serialized).expect("Unable to write proof");
     }
 }

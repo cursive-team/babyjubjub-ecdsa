@@ -6,9 +6,9 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
-[[bin]]
-name = "params_gen"
-path = "src/bin/params_gen.rs"
+# [[bin]]
+# name = "params_gen"
+# path = "src/bin/params_gen.rs"
 
 [dependencies]
 nova-scotia = { git = "https://github.com/nalinbhardwaj/Nova-Scotia/" }
@@ -18,31 +18,34 @@ serde-wasm-bindgen = "0.6.4"
 serde_json = "1.0.107"
 clap = { version = "4.4.7", features = ["derive"] }
 flate2 = "1.0.28"
+reqwest = { version = "0.11.24", features = ["json"] }
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 getrandom = { version = "0.2", features = ["js"]}
 wasm-bindgen = { version = "0.2.91", features = ["serde-serialize"]}
 console_error_panic_hook = "0.1.7"
 rayon = "1.5"
-# wasm-bindgen-rayon = { version = "1.2" }
+wasm-bindgen-rayon = { version = "1.0" }
 web-sys = { version = "0.3", features = ["Request", "Window", "Response"] }
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
+wasm-bindgen-test = "0.3.37"
 
-[dev-dependencies]
-criterion = "0.4.0"
 
-[[bench]]
-name = "fold_10"
-path = "benches/fold_10.rs"
-harness = false
+# [dev-dependencies]
+# criterion = "0.4.0"
 
-[[bench]]
-name = "fold_100"
-path = "benches/fold_100.rs"
-harness = false
+# [[bench]]
+# name = "fold_10"
+# path = "benches/fold_10.rs"
+# harness = false
 
-[[bench]]
-name = "compress_fold"
-path = "benches/compress_fold.rs"
-harness = false
+# [[bench]]
+# name = "fold_100"
+# path = "benches/fold_100.rs"
+# harness = false
+
+# [[bench]]
+# name = "compress_fold"
+# path = "benches/compress_fold.rs"
+# harness = false

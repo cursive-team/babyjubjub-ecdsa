@@ -1,16 +1,24 @@
+#[cfg(target_family = "wasm")]
 use js_sys::Array;
 use nova_scotia::{
     circom::reader::load_r1cs, create_recursive_circuit, FileLocation, C1, C2, F, S,
 };
 
-pub const BASE_URL: &str = "/home/jpag/Workground/EF/babyjubjub-ecdsa/packages/nova/circuits/artifacts/";
+// pub const BASE_URL: &str =
+//     "/home/jpag/Workground/EF/babyjubjub-ecdsa/packages/nova/circuits/artifacts/";
+
+pub const BASE_URL: &str = "https://pink-grieving-spoonbill-655.mypinata.cloud/ipfs/QmUQd6cnPz2YfJh7WQ8XLF6a8str35t5YfKQsSd6RFmLs5";
+
 pub const FILE_NAME: &str = "folded";
 
 // use nova_snark::{RecursiveSnark};
-use crate::{inputs::Membership, NovaProof, Params, DEFAULT_TREE_DEPTH};
+use crate::{
+    inputs::{get_example_input, Membership},
+    Fr, NovaProof, Params, DEFAULT_TREE_DEPTH, G1, G2,
+};
+use console_error_panic_hook;
 use wasm_bindgen::prelude::*;
 pub use wasm_bindgen_rayon::init_thread_pool;
-use console_error_panic_hook;
 
 // https://github.com/dmpierre/zkconnect4/blob/main/zkconnect4-nova-wasm/src/wasm.rs#L15-L37
 #[wasm_bindgen]
@@ -29,6 +37,13 @@ extern "C" {
     // Multiple arguments too!
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log_many(a: &str, b: &str);
+
+    type Performance;
+
+    static performance: Performance;
+
+    #[wasm_bindgen(method)]
+    fn now(this: &Performance) -> f64;
 }
 macro_rules! console_log {
     // Note that this is using the `log` function imported above during
@@ -42,50 +57,56 @@ pub fn init_panic_hook() {
     console_error_panic_hook::set_once();
 }
 
+// #[wasm_bindgen]
+// pub async fn download_params(url: String) -> String {
+//     let pp_str = get_chunked_pp_file(BASE_URL.to_string().clone() + "public_params.json", &prefix, 11).await;
+//     let pp = serde_json::from_str::<PublicParams<G1, G2, C1<G1>, C2<G2>>>(&pp_str).unwrap();
+//     console_log!(
+//         "Number of constraints per step (primary circuit): {}",
+//         pp.num_constraints().0
+//     );
+//     return pp_str;
+// }
+
 #[wasm_bindgen]
-pub async fn download_params(url: String) -> String {
-    let pp_str = get_chunked_pp_file(&url, &prefix, 11).await;
-    let pp = serde_json::from_str::<PublicParams<G1, G2, C1<G1>, C2<G2>>>(&pp_str).unwrap();
-    console_log!(
-        "Number of constraints per step (primary circuit): {}",
-        pp.num_constraints().0
-    );
-    return pp_str;
+pub async fn get_pp_file() -> String {
+    let url = format!("{}/{}", BASE_URL, "public_params.json");
+    let pp = reqwest::get(&url).await.unwrap().text().await.unwrap();
+    return pp;
 }
 
 /** Generates a new proof */
 #[wasm_bindgen]
-pub async fn generate_proof(pp_string: String, membership_string: String) -> String {
+pub async fn generate_proof(params_string: String, membership_string: String) -> String {
     init_panic_hook();
-    let mut pp_str = String::new();
-    for i in 0..11 {
-        pp_str.push_str(&pp_chunks.get(i).as_string().unwrap());
-    }
 
-    let r1cs = load_r1cs::<G1, G2>(&FileLocation::URL(
-        BASE_URL.to_string().clone() + FILE_NAME + ".r1cs",
-    ))
+    let r1cs = load_r1cs::<G1, G2>(&FileLocation::URL(format!(
+        "{}/{}.r1cs",
+        BASE_URL, FILE_NAME
+    )))
     .await;
-    let witness_generator_wasm =
-        FileLocation::URL(BASE_URL.to_string().clone() + FILE_NAME + ".wasm");
 
-    let membership: Membership<DEFAULT_TREE_DEPTH> = serde_json::from_str(&membership_string).unwrap();
-    let inputs = membership.to_inputs();
 
-    let private_inputs = create_private_inputs(&game, n_turns);
+    let witness_generator_wasm = FileLocation::URL(format!("{}/{}.wasm", BASE_URL, FILE_NAME));
 
-    let start_step_input = vec![Fr::from(0); 4];
+    let membership: Membership<DEFAULT_TREE_DEPTH> =
+        serde_json::from_str(&membership_string).unwrap();
 
-    let pp: PublicParams<G1, G2, _, _> = serde_json::from_str(&pp_str).unwrap();
 
-    console_log!("Folding a new membership...");
+    let private_inputs = membership.to_inputs();
+
+    let start_public_input = vec![Fr::from(0); 4];
+    let start = performance.now();
+    let params: Params = serde_json::from_str(&params_string).unwrap();
+    let end = performance.now();
+    console_log!("Time to complete params marshall: {}", end - start);
 
     let proof = create_recursive_circuit(
         witness_generator_wasm,
         r1cs,
-        private_inputs,
+        vec![private_inputs],
         start_public_input.clone(),
-        &pp,
+        &params,
     )
     .await
     .unwrap();
@@ -94,6 +115,27 @@ pub async fn generate_proof(pp_string: String, membership_string: String) -> Str
     return serde_json::to_string(&proof).unwrap();
 }
 
+// #[wasm_bindgen]
+// pub async fn continue_proof(params_string: String, membership_string: String, proof_string: String) -> String {
+//     init_panic_hook();
+
+//     // get r1cs
+//     let r1cs = load_r1cs::<G1, G2>(&FileLocation::URL(format!(
+//         "{}/{}.r1cs",
+//         BASE_URL, FILE_NAME
+//     )))
+//     .await;
+
+//     // get witness generator
+//     let witness_generator_wasm = FileLocation::URL(format!("{}/{}.wasm", BASE_URL, FILE_NAME));
+
+//     // deserialize membership
+//     let membership: Membership<DEFAULT_TREE_DEPTH> =
+//         serde_json::from_str(&membership_string).unwrap();
+//     let private_inputs = membership.to_inputs();
+// }
+
+// pub async fn verify_proof(params_string: String, proof_string: String) -> St
 // /** Continues building from an existing proof */
 // #[wasm_bindgen]
 // pub async fn continue_proof(artifact_url: String, pp_chunks: Array, proof_string: String, game_string: String) -> String {
@@ -174,4 +216,69 @@ pub async fn generate_proof(pp_string: String, membership_string: String) -> Str
 //     );
 //     assert!(res.is_ok());
 //     return serde_json::to_string(&compressed_snark).unwrap();
+// }
+
+use wasm_bindgen_test::*;
+
+// #[wasm_bindgen_test]
+// async fn load_r1cs_and_pp() {
+//     wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
+//     // let r1cs = load_r1cs::<G1, G2>(&FileLocation::URL(format!(
+//     //     "{}{}.r1cs",
+//     //     BASE_URL, FILE_NAME
+//     // )))
+//     // .await;
+//     // let pp_str = get_pp_file().await;
+//     // let params: Params = serde_json::from_str(&pp_str).unwrap();
+// }
+
+#[wasm_bindgen_test]
+async fn test_test() {
+    console_log!("This is a test to see if console will tell me to fuck off");
+}
+
+#[wasm_bindgen_test]
+async fn compute_snark() {
+    wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_worker);
+    // get artifacts
+    // let r1cs = load_r1cs::<G1, G2>(&FileLocation::URL(format!(
+    //     "{}{}.r1cs",
+    //     BASE_URL, FILE_NAME
+    // )))
+    // .await;
+    // Start timing
+    let start = performance.now();
+    let pp_str = get_pp_file().await;
+    let end_download_pp = performance.now();
+    console_log!("Time to complete params download: {}", end_download_pp - start);
+    // let witness_generator_wasm = FileLocation::URL(format!("{}{}.wasm", BASE_URL, FILE_NAME));
+    // let private_input = vec![get_example_input()];
+
+    let url = "https://pink-grieving-spoonbill-655.mypinata.cloud/ipfs/QmQsgDYfoc5sb74vfnJHMHLZ9G8iECke1VFbrkZHsRdh1e";
+    // console_log!(format!("{}", url));
+
+    let resp = reqwest::get(url)
+        .await
+        .unwrap()
+        .json::<Membership<8>>()
+        .await
+        .unwrap();
+    let membership_string = serde_json::to_string(&resp).unwrap();
+    
+    let start = performance.now();
+    let proof: String = generate_proof(pp_str, membership_string).await;
+    let end = performance.now();
+    console_log!("Time to complete proof: {}", end - start);
+    console_log!("Success building a proof");
+}
+
+// #[wasm_bindgen_test]
+// async fn get_json() {
+//     wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_worker);
+//     let url = "https://pink-grieving-spoonbill-655.mypinata.cloud/ipfs/QmQsgDYfoc5sb74vfnJHMHLZ9G8iECke1VFbrkZHsRdh1e";
+//     // let file = std::fs::read_to_string(path).unwrap();
+//     let x = reqwest::get(url).await.unwrap().text().await.unwrap();
+//     console_log!("{}", x);
+//     let membership: Membership<8> = serde_json::from_str(&x).unwrap();
+//     println!("Membership: {:#?}", membership);
 // }
