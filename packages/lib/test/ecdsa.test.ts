@@ -3,115 +3,109 @@ import {
   computeTUFromR,
   privateKeyToPublicKey,
   recoverPubKeyIndexFromSignature,
-  verifyEcdsaSignature,
+  generateSignatureKeyPair,
+  sign,
+  verify,
 } from "../src/ecdsa";
 import { hexToBigInt, publicKeyFromString } from "../src/utils";
+import { getCounterMessage } from "../src/libhalo";
 
-// Note for all ecdsa tests: the magic expected values are generated from
-// a Python implementation of BabyJubjub ECDSA: https://github.com/AndrewCLu/baby-jubjub
-// This implementation itself is based on many different EC and ECDSA formulae around the web
 // Tests BabyJubjub ECDSA signature verification in Javascript
 describe("javascript signature verification", () => {
-  test("should verify a baby jubjub ecdsa signature 0", () => {
-    const privKey =
-      "0323dbbda9a5aff570d974d71c88334cf99ab9c0455e1d2546ca03ca069eb1e0";
-    const msgHash = BigInt("0");
-    const sig = {
-      r: hexToBigInt(
-        "00EF7145470CEC0B683C629CBA8ED58110000FFE657366F7D5A91F2D149DD8B5"
-      ),
-      s: hexToBigInt(
-        "0370C60A23266F520C56DA088B4C4AFAAAF6BB1993A501980F6D8FB6F343984A"
-      ),
-    };
+  test("should generate different keypairs", () => {
+    const keyPair = generateSignatureKeyPair();
+    const keyPair2 = generateSignatureKeyPair();
 
-    const pubKey = privateKeyToPublicKey(hexToBigInt(privKey));
-
-    expect(verifyEcdsaSignature(sig, msgHash, pubKey)).toBe(true);
+    expect(keyPair.verifyingKey).not.toEqual(keyPair2.verifyingKey);
+    expect(keyPair.signingKey).not.toEqual(keyPair2.signingKey);
   });
 
-  test("should verify a baby jubjub ecdsa signature 1", () => {
-    const privKey =
-      "0323dbbda9a5aff570d974d71c88334cf99ab9c0455e1d2546ca03ca069eb1e0";
-    const msgHash = BigInt("1");
-    const sig = {
-      r: hexToBigInt(
-        "04BEF5B82A7637BBFF0D3C52DDB982A00C84FE8A386625369B511CF538CD3584"
-      ),
-      s: hexToBigInt(
-        "00CA8ED01E70CEC6DE27C1B9F6735B52FB49E4521F50BEEDEED8E81459729E2E"
-      ),
-    };
-
-    const pubKey = privateKeyToPublicKey(hexToBigInt(privKey));
-
-    expect(verifyEcdsaSignature(sig, msgHash, pubKey)).toBe(true);
+  test("should correctly sign and verify", () => {
+    const keyPair = generateSignatureKeyPair();
+    const msg = "abcd1234";
+    const signature = sign(keyPair.signingKey, msg);
+    expect(verify(keyPair.verifyingKey, msg, signature)).toEqual(true);
   });
 
-  test("should verify a baby jubjub ecdsa signature 2", () => {
-    const privKey =
-      "0323dbbda9a5aff570d974d71c88334cf99ab9c0455e1d2546ca03ca069eb1e0";
-    const msgHash = BigInt("2");
-    const sig = {
-      r: hexToBigInt(
-        "05718D88F4B6B357D2D9D53708F1C3EFE61C38C6A8BD107B2779182D80E75665"
-      ),
-      s: hexToBigInt(
-        "00906FA5864D2682981DA3B5BABBB5C3EA07E008335ED8266C55546D46B45A42"
-      ),
-    };
-
-    const pubKey = privateKeyToPublicKey(hexToBigInt(privKey));
-
-    expect(verifyEcdsaSignature(sig, msgHash, pubKey)).toBe(true);
+  test("should correctly not verify with different keypair", () => {
+    const keyPair = generateSignatureKeyPair();
+    const keyPair2 = generateSignatureKeyPair();
+    const msg = "abcd1234";
+    const signature = sign(keyPair.signingKey, msg);
+    expect(verify(keyPair2.verifyingKey, msg, signature)).toEqual(false);
   });
 
-  test("should verify a baby jubjub ecdsa signature 3", () => {
-    const pubKey = new WeierstrassPoint(
-      BigInt(
-        "3232533026113810378959142444695349421501562423203727069041340448447821565406"
-      ),
-      BigInt(
-        "2188348859066493967748283765357824083446977800414462976475976389468050954576"
-      )
-    );
-    const msgHash = BigInt(
-      "2946972996217835208449517111206100981106410880664713281589395314649921690550"
-    );
-    const sig = {
-      r: BigInt(
-        "1840783889620414587148889492823509056116889771324083520524283336613943085117"
-      ),
-      s: BigInt(
-        "1739665441663252318720166579941834138245075960720774698623992586667777500452"
-      ),
-    };
-
-    expect(verifyEcdsaSignature(sig, msgHash, pubKey)).toBe(true);
+  test("should correctly not verify with different message", () => {
+    const keyPair = generateSignatureKeyPair();
+    const msg = "abcd1234";
+    const msg2 = "1234abcd";
+    const signature = sign(keyPair.signingKey, msg);
+    expect(verify(keyPair.verifyingKey, msg2, signature)).toEqual(false);
   });
 
-  test("should verify a baby jubjub ecdsa signature 4", () => {
-    const pubKey = new WeierstrassPoint(
-      BigInt(
-        "3232533026113810378959142444695349421501562423203727069041340448447821565406"
-      ),
-      BigInt(
-        "2188348859066493967748283765357824083446977800414462976475976389468050954576"
-      )
+  test("should correctly verify libhalo sig 1", () => {
+    const msg = getCounterMessage(
+      12,
+      "2ECE8845C4114D80DCCF8E911E2FD586BF9E1106650F8B55C0AC55D6"
     );
-    const msgHash = BigInt(
-      "959992042565662302991225573197761987736081061736836521396002216380900360528"
-    );
-    const sig = {
-      r: BigInt(
-        "1856322010174419002598766346323954612142211502777436374084285602917776883052"
-      ),
-      s: BigInt(
-        "620220295126728043540210170239716626150792206560166734872758425758290398102"
-      ),
-    };
+    const verifyingKey =
+      "0407258C81D3DE9F17FFADFCD8CE1CBCAD83027A7FD0A3221FF03CFD1DFBE0CDDE04D68FC27A9F3F0A0BF480326CE5DCD2A9CBFCA34D4098E6A60DA4AE64281950";
+    const derSig =
+      "30440220041AA41A2D8E6384EE5DF70CC0AD6713F9236C9C97E222939B73D9673377FD6C0220015F084155ABC57BA4176C1F39A0952F47110C45D78387AF5603529D58C7CB960407";
 
-    expect(verifyEcdsaSignature(sig, msgHash, pubKey)).toBe(true);
+    expect(verify(verifyingKey, msg, derSig)).toEqual(true);
+  });
+
+  test("should correctly verify libhalo sig 2", () => {
+    const msg = getCounterMessage(
+      13,
+      "F8D06C26B7FE3598D827D6B91535766B1F4909B8B9174E60A63EE6E6"
+    );
+    const verifyingKey =
+      "0407258C81D3DE9F17FFADFCD8CE1CBCAD83027A7FD0A3221FF03CFD1DFBE0CDDE04D68FC27A9F3F0A0BF480326CE5DCD2A9CBFCA34D4098E6A60DA4AE64281950";
+    const derSig =
+      "3044022005DBAA155224C52E2B9CBB965D07E25AFF7E4A0589DFEECA55F0DD34035A4B9F0220045B9D859FEADA70F9015CB60C57E5BD6CCC6F705BBC7471B522C18C4949FA8E0407";
+
+    expect(verify(verifyingKey, msg, derSig)).toEqual(true);
+  });
+
+  test("should correctly verify libhalo sig 3", () => {
+    const msg = getCounterMessage(
+      14,
+      "17B86CC70F389D4C5BFA44B871F16BCC76521201DF1A69FC10DCE9A6"
+    );
+    const verifyingKey =
+      "0407258C81D3DE9F17FFADFCD8CE1CBCAD83027A7FD0A3221FF03CFD1DFBE0CDDE04D68FC27A9F3F0A0BF480326CE5DCD2A9CBFCA34D4098E6A60DA4AE64281950";
+    const derSig =
+      "30440220020CF4AA0C8A2EE10C41016A6069E3604B1F8487C8C6EE95954F5E15E00128200220041576E3149B4CCA5F281B56122100877BEBCDD3F8338DCD574CBC1447CFB3E60407";
+
+    expect(verify(verifyingKey, msg, derSig)).toEqual(true);
+  });
+
+  test("should correctly verify libhalo sig 4", () => {
+    const msg = getCounterMessage(
+      2,
+      "23BA6C027D8980C0F6F72D1F91660FA57D7C09D7DBEA000BF4727842"
+    );
+    const verifyingKey =
+      "040902129E2195B5DEDC2F9B060E846CE6FF6B6A32794A5BA22F3FA03B068F90A52635451C65448273303F2D403F92FF57FD10A67B1B956B3258A1AA5F4F88B5CB";
+    const derSig =
+      "3044022005B723A4E98840B387A3FE33A2F6C31E746CC00C4E8B260AF6BC8D014C11462B02200287CBFF41C066D3094CBD33C7F03594BD87298FC80B739B5D0F245F530F30060409";
+
+    expect(verify(verifyingKey, msg, derSig)).toEqual(true);
+  });
+
+  test("should correctly verify libhalo sig 5", () => {
+    const msg = getCounterMessage(
+      3,
+      "CB62FA3C9E5772DEDE937C0CB63006118D7F90FEDC73DB84F626796A"
+    );
+    const verifyingKey =
+      "040902129E2195B5DEDC2F9B060E846CE6FF6B6A32794A5BA22F3FA03B068F90A52635451C65448273303F2D403F92FF57FD10A67B1B956B3258A1AA5F4F88B5CB";
+    const derSig =
+      "3044022005B66AFC1CC0ECFAEA261F03E4561AC2ACCC848EA20091344A6782620335FE1402200213C98E5FED563603A545163229274E86A646176ACF18C75361764B884E92940409";
+
+    expect(verify(verifyingKey, msg, derSig)).toEqual(true);
   });
 });
 
