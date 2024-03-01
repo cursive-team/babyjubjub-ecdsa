@@ -110,10 +110,13 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 name = "babyjubjub-ecdsa-nova"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "clap",
  "console_error_panic_hook",
+ "ff",
  "flate2",
  "getrandom",
+ "hex",
  "js-sys",
  "nova-scotia",
  "nova-snark",
@@ -1104,7 +1107,7 @@ dependencies = [
 [[package]]
 name = "nova-scotia"
 version = "0.5.0"
-source = "git+https://github.com/nalinbhardwaj/Nova-Scotia/#54f2bdbb78aad841d8714f7e2d0344bcc593a922"
+source = "git+https://github.com/Mach-34/Nova-Scotia/#8900aca7c576bb6b99341072c5585bc655deec73"
 dependencies = [
  "anyhow",
  "bellperson",
