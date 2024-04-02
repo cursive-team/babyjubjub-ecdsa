@@ -24,5 +24,26 @@ rm -rf ./artifacts/folded_js
 # Generate the public parameters
 cd ..
 echo "Generating public parameters for baby-jubjub-ecdsa folded circuit..."
-cargo run --bin params_gen params ./circuits/artifacts/folded.r1cs ./circuits/artifacts/
+
+# Detect the operating system
+OS=$(uname)
+
+# Choose the Rust target based on the OS
+case $OS in
+  "Darwin")
+    # macOS
+    RUST_TARGET="x86_64-apple-darwin"
+    ;;
+  "Linux")
+    # Linux
+    RUST_TARGET="x86_64-unknown-linux-gnu"
+    ;;
+  *)
+    echo "Unsupported OS: $OS"
+    exit 1
+    ;;
+esac
+
+# cargo run --target x86_64-unknown-linux-gnu --bin  params_gen params ./circuits/artifacts/folded.r1cs ./circuits/artifacts/
+cargo run --target $RUST_TARGET --bin  params_gen params ./circuits/artifacts/folded.r1cs ./circuits/artifacts/
 echo "Setup for baby-jubjub-ecdsa folded circuit complete!"

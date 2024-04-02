@@ -1,12 +1,13 @@
-use ff::PrimeField;
 #[cfg(target_family = "wasm")]
-use js_sys::{Array, Number};
+use js_sys::{Array, Number, Boolean};
 use nova_scotia::{
     circom::reader::load_r1cs, continue_recursive_circuit, create_recursive_circuit, FileLocation,
     C1, C2, F, S,
 };
+use ff::PrimeField;
+use nova_snark::{CompressedSNARK, ProverKey, VerifierKey};
 
-pub const BASE_URL: &str = "https://pink-grieving-spoonbill-655.mypinata.cloud/ipfs/QmUQd6cnPz2YfJh7WQ8XLF6a8str35t5YfKQsSd6RFmLs5";
+pub const BASE_URL: &str = "https://coffee-perfect-shark-551.mypinata.cloud/ipfs/QmThS3qgTvtZtN5tyURpbgFtSQxC6mrvs4ijzjH8PSFKva";
 pub const FILE_NAME: &str = "folded";
 
 // use nova_snark::{RecursiveSnark};
@@ -63,8 +64,29 @@ pub fn init_panic_hook() {
 #[wasm_bindgen]
 pub async fn get_pp_file() -> String {
     let url = format!("{}/{}", BASE_URL, "public_params.json");
-    let pp = reqwest::get(&url).await.unwrap().text().await.unwrap();
-    return pp;
+    reqwest::get(&url).await.unwrap().text().await.unwrap()
+}
+
+/**
+ * Get the spartan proving key file for compression and zk
+ *
+ * @return - the stringified pk.json file
+ */
+#[wasm_bindgen]
+pub async fn get_pk_file() -> String {
+    let url = format!("{}/{}", BASE_URL, "pk.json");
+    reqwest::get(&url).await.unwrap().text().await.unwrap()
+}
+
+/**
+ * Get the spartan verification key file for verifying compressed spartan zk proof
+ *
+ * @return - the stringified vk.json file
+ */
+#[wasm_bindgen]
+pub async fn get_vk_file() -> String {
+    let url = format!("{}/{}", BASE_URL, "vk.json");
+    reqwest::get(&url).await.unwrap().text().await.unwrap()
 }
 
 /** Verify a proof */
@@ -209,45 +231,65 @@ pub async fn continue_proof(
     serde_json::to_string(&proof).unwrap()
 }
 
-use wasm_bindgen_test::*;
-
-// #[wasm_bindgen_test]
-async fn compute_snark() {
-    wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_worker);
-    // get artifacts
-    // let r1cs = load_r1cs::<G1, G2>(&FileLocation::URL(format!(
-    //     "{}{}.r1cs",
-    //     BASE_URL, FILE_NAME
-    // )))
-    // .await;
-    // Start timing
-    let start: f64 = performance.now();
-    let pp_str = get_pp_file().await;
-    let end_download_pp = performance.now();
-    console_log!(
-        "Time to complete params download: {}",
-        end_download_pp - start
-    );
-    // let witness_generator_wasm = FileLocation::URL(format!("{}{}.wasm", BASE_URL, FILE_NAME));
-    // let private_input = vec![get_example_input()];
-
-    let url = "https://pink-grieving-spoonbill-655.mypinata.cloud/ipfs/QmQsgDYfoc5sb74vfnJHMHLZ9G8iECke1VFbrkZHsRdh1e";
-    // console_log!(format!("{}", url));
-
-    let resp = reqwest::get(url)
-        .await
-        .unwrap()
-        .json::<Membership<8>>()
-        .await
-        .unwrap();
-    let membership_string = serde_json::to_string(&resp).unwrap();
-
-    let start = performance.now();
-    let proof: String = generate_proof(pp_str, membership_string).await;
-    let end = performance.now();
-    console_log!("Time to complete proof: {}", end - start);
-    console_log!("Success building a proof");
+#[wasm_bindgen]
+pub async fn compress_to_spartan(
+    params_string: String,
+    proving_key_string: String,
+    proof_string: String
+) -> String {
+    // deserialize the public params
+    console_log!("Deserializing");
+    let params: Params = serde_json::from_str(&params_string).unwrap();
+    // deserialize the proving key
+    let proving_key: ProverKey<G1, G2, C1<G1>, C2<G2>, S<G1>, S<G2>> = serde_json::from_str(&proving_key_string).unwrap();
+    // deserialize the proof
+    let proof: NovaProof = serde_json::from_str(&proof_string).unwrap();
+    // compress the proof
+    console_log!("Proving");
+    let compressed_proof = CompressedSNARK::<_, _, _, _, S<G1>, S<G2>>::prove(&params, &proving_key, &proof).unwrap();
+    // return the stringified proof
+    console_log!("Proving successful");
+    serde_json::to_string(&compressed_proof).unwrap()
 }
+
+#[wasm_bindgen]
+pub async fn verify_spartan(verifier_key_string: String, proof_string: String, iterations: Number) -> Array {
+    // deserialize the verifier key
+    let vk: VerifierKey<G1, G2, C1<G1>, C2<G2>, S<G1>, S<G2>> = serde_json::from_str(&verifier_key_string).unwrap();
+
+    // deserialize the proof
+    let proof: CompressedSNARK::<G1, G2, C1<G1>, C2<G2>, S<G1>, S<G2>> = serde_json::from_str(&proof_string).unwrap();
+
+    // parse num steps
+    let num_steps = iterations.as_f64().unwrap() as usize;
+
+    // set z0 secondary and start input
+    let start_step_input = vec![Fr::from(0); 4];
+    let z0_secondary = vec![Fq::from(0)];
+
+    // verify the proof
+    let res = proof.verify(
+        &vk,
+        num_steps,
+        start_step_input,
+        z0_secondary
+    ).unwrap().0;
+
+    // marshall results into js values
+    let arr = Array::new_with_length(4);
+    for (index, item) in res.into_iter().enumerate() {
+        arr.set(
+            index as u32,
+            JsValue::from_str(&hex::encode(item.to_bytes())),
+        );
+    }
+
+    arr
+}
+
+
+
+use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
 async fn fold_3_test() {
@@ -262,7 +304,7 @@ async fn fold_3_test() {
     console_log!("Time to complete params download: {}ms", end - start);
 
     // get the membership inputs
-    let url = "https://pink-grieving-spoonbill-655.mypinata.cloud/ipfs/QmQsgDYfoc5sb74vfnJHMHLZ9G8iECke1VFbrkZHsRdh1e";
+    let url = format!("{}/{}", BASE_URL, "example.json");
     let resp = reqwest::get(url)
         .await
         .unwrap()
@@ -305,4 +347,39 @@ async fn fold_3_test() {
     let start = performance.now();
     let zi_primary = verify_proof(pp_str.clone(), proof.clone(), Number::from(3)).await;
     let end = performance.now();
+    console_log!("Time to complete verification 2: {}ms", end - start);
+
+    // retrieve proving key
+    let start = performance.now();
+    let pk = get_pk_file().await;
+    let end = performance.now();
+    console_log!("Time to retrieve pk: {}ms", end - start);
+
+    // get verifier key
+    let start = performance.now();
+    let vk = get_vk_file().await;
+    let end = performance.now();
+    console_log!("Time to retrieve vk: {}ms", end - start);
+
+    // compress into snark
+    let start = performance.now();
+    let compressed_proof = compress_to_spartan(pp_str.clone(), pk, proof.clone()).await;
+    let end = performance.now();
+    console_log!("Time to compress proof to spartan: {}ms", end - start);
+
+    // verify snark
+    let start = performance.now();
+    let res = verify_spartan(vk, compressed_proof, Number::from(3)).await;
+    let end = performance.now();
+    console_log!("Time to verify spartan proof: {}ms", end - start);
+
+    // print output
+    let mut output: Vec<String> = vec![];
+    for i in 0..4 {
+        output.push(res.get(i as u32).as_string().unwrap());
+    }
+    console_log!("Root: {}", output[0]);
+    console_log!("Pubkey Nullifier Randomness: {}", output[1]);
+    console_log!("Signature Nullifier Randomness: {}", output[2]);
+    console_log!("Number of signatures verified: {}", output[3]);
 }
