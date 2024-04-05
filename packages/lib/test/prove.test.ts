@@ -31,6 +31,7 @@ describe("ECDSA membership proof generation and verification", () => {
     await globalThis.curve_bn128.terminate();
   });
 
+  const MERKLE_TREE_DEPTH = 8;
   const pathToCircuits = process.cwd() + "/test/circuits/";
 
   // Tests based on pre-generated BabyJubjub ECDSA signatures
@@ -60,6 +61,7 @@ describe("ECDSA membership proof generation and verification", () => {
       const proof = await proveMembership({
         sig,
         msgHash,
+        merkleTreeDepth: MERKLE_TREE_DEPTH,
         merkleProofArgs: {
           pubKeys: pubKeyPoints,
           index: 2,
@@ -72,6 +74,7 @@ describe("ECDSA membership proof generation and verification", () => {
 
       const result = await verifyMembership({
         proof,
+        merkleTreeDepth: MERKLE_TREE_DEPTH,
         merkleRootArgs: {
           pubKeys: pubKeyPoints,
           hashFn: poseidon,
@@ -111,12 +114,17 @@ describe("ECDSA membership proof generation and verification", () => {
       const edwardsPubKeys = await Promise.all(
         pubKeyPoints.map(async (pubKey) => pubKey.toEdwards())
       );
-      const merkleProof = await computeMerkleProof(edwardsPubKeys, index);
+      const merkleProof = await computeMerkleProof(
+        MERKLE_TREE_DEPTH,
+        edwardsPubKeys,
+        index
+      );
 
       const proof = await proveMembership({
         sig,
         msgHash,
         publicInputs,
+        merkleTreeDepth: MERKLE_TREE_DEPTH,
         merkleProof,
         sigNullifierRandomness,
         pubKeyNullifierRandomness,
@@ -125,6 +133,7 @@ describe("ECDSA membership proof generation and verification", () => {
 
       const result = await verifyMembership({
         proof,
+        merkleTreeDepth: MERKLE_TREE_DEPTH,
         merkleRootArgs: {
           pubKeys: pubKeyPoints,
         },
@@ -158,20 +167,29 @@ describe("ECDSA membership proof generation and verification", () => {
       const edwardsPubKeys = await Promise.all(
         pubKeyPoints.map(async (pubKey) => pubKey.toEdwards())
       );
-      const merkleProof = await computeMerkleProof(edwardsPubKeys, index);
+      const merkleProof = await computeMerkleProof(
+        MERKLE_TREE_DEPTH,
+        edwardsPubKeys,
+        index
+      );
       const proof = await proveMembership({
         sig,
         msgHash,
         publicInputs,
+        merkleTreeDepth: MERKLE_TREE_DEPTH,
         merkleProof,
         sigNullifierRandomness,
         pubKeyNullifierRandomness,
         pathToCircuits,
       });
 
-      const merkleRoot = await computeMerkleRoot(edwardsPubKeys);
+      const merkleRoot = await computeMerkleRoot(
+        MERKLE_TREE_DEPTH,
+        edwardsPubKeys
+      );
       const result = await verifyMembership({
         proof,
+        merkleTreeDepth: MERKLE_TREE_DEPTH,
         merkleRoot,
         sigNullifierRandomness,
         pathToCircuits,
@@ -231,6 +249,7 @@ describe("ECDSA membership proof generation and verification", () => {
       const proof = await proveMembership({
         sig,
         msgHash,
+        merkleTreeDepth: MERKLE_TREE_DEPTH,
         merkleProofArgs: {
           pubKeys,
           index: 1,
@@ -242,6 +261,7 @@ describe("ECDSA membership proof generation and verification", () => {
 
       const result = await verifyMembership({
         proof,
+        merkleTreeDepth: MERKLE_TREE_DEPTH,
         merkleRootArgs: {
           pubKeys,
         },
@@ -260,6 +280,7 @@ describe("ECDSA membership proof generation and verification", () => {
       const proof = await proveMembership({
         sig,
         msgHash,
+        merkleTreeDepth: MERKLE_TREE_DEPTH,
         merkleProofArgs: {
           pubKeys,
           index: 2,
@@ -271,6 +292,7 @@ describe("ECDSA membership proof generation and verification", () => {
 
       const result = await verifyMembership({
         proof,
+        merkleTreeDepth: MERKLE_TREE_DEPTH,
         merkleRootArgs: {
           pubKeys,
         },
@@ -295,6 +317,7 @@ describe("ECDSA membership proof generation and verification", () => {
       const proofs = await batchProveMembership({
         sigs,
         msgHashes: [msgHash, msgHash, msgHash, msgHash, msgHash, msgHash],
+        merkleTreeDepth: MERKLE_TREE_DEPTH,
         merkleProofArgs: {
           pubKeys,
           indices: [1, 1, 2, 2, 3, 3],
@@ -306,6 +329,7 @@ describe("ECDSA membership proof generation and verification", () => {
 
       const result = await batchVerifyMembership({
         proofs,
+        merkleTreeDepth: MERKLE_TREE_DEPTH,
         merkleRootArgs: {
           pubKeys,
         },
@@ -344,6 +368,7 @@ describe("ECDSA membership proof generation and verification", () => {
       const proof = await proveMembership({
         sig,
         msgHash,
+        merkleTreeDepth: MERKLE_TREE_DEPTH,
         merkleProofArgs: {
           pubKeys: pubKeyPoints,
           index,
