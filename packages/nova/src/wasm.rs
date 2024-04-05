@@ -1,10 +1,10 @@
+use ff::PrimeField;
 #[cfg(target_family = "wasm")]
-use js_sys::{Array, Number, Boolean};
+use js_sys::{Array, Boolean, Number};
 use nova_scotia::{
     circom::reader::load_r1cs, continue_recursive_circuit, create_recursive_circuit, FileLocation,
     C1, C2, F, S,
 };
-use ff::PrimeField;
 use nova_snark::{CompressedSNARK, ProverKey, VerifierKey};
 
 pub const BASE_URL: &str = "https://coffee-perfect-shark-551.mypinata.cloud/ipfs/QmThS3qgTvtZtN5tyURpbgFtSQxC6mrvs4ijzjH8PSFKva";
@@ -123,19 +123,20 @@ pub async fn verify_proof(params_string: String, proof_string: String, num_steps
 
 /** Generates a new proof */
 #[wasm_bindgen]
-pub async fn generate_proof(params_string: String, membership_string: String) -> String {
+pub async fn generate_proof(
+    r1cs_url: String,
+    wasm_url: String,
+    params_string: String,
+    membership_string: String,
+) -> String {
     init_panic_hook();
     // get r1cs
     // can't be deserialized without adding code upstream so download every time :/
-    let r1cs = load_r1cs::<G1, G2>(&FileLocation::URL(format!(
-        "{}/{}.r1cs",
-        BASE_URL, FILE_NAME
-    )))
-    .await;
+    let r1cs = load_r1cs::<G1, G2>(&FileLocation::URL(r1cs_url)).await;
     // deserialize the public params
     let params: Params = serde_json::from_str(&params_string).unwrap();
     // set location of the remote witcalc wasm file
-    let witness_generator_wasm = FileLocation::URL(format!("{}/{}.wasm", BASE_URL, FILE_NAME));
+    let witness_generator_wasm = FileLocation::URL(wasm_url);
 
     // deserialize the private input (membership inputs)
     let membership: Membership<DEFAULT_TREE_DEPTH> =
@@ -174,6 +175,8 @@ pub async fn generate_proof(params_string: String, membership_string: String) ->
  */
 #[wasm_bindgen]
 pub async fn continue_proof(
+    r1cs_url: String,
+    wasm_url: String,
     params_string: String,
     proof_string: String,
     membership_string: String,
@@ -183,15 +186,17 @@ pub async fn continue_proof(
 
     // get r1cs
     // can't be deserialized without adding code upstream so download every time :/
-    let r1cs = load_r1cs::<G1, G2>(&FileLocation::URL(format!(
-        "{}/{}.r1cs",
-        BASE_URL, FILE_NAME
-    )))
-    .await;
+    // let r1cs = load_r1cs::<G1, G2>(&FileLocation::URL(format!(
+    //     "{}/{}.r1cs",
+    //     BASE_URL, FILE_NAME
+    // )))
+    // .await;
+    let r1cs = load_r1cs::<G1, G2>(&FileLocation::URL(r1cs_url)).await;
     // deserialize the public params
     let params: Params = serde_json::from_str(&params_string).unwrap();
     // set location of the remote witcalc wasm file
-    let witness_generator_wasm = FileLocation::URL(format!("{}/{}.wasm", BASE_URL, FILE_NAME));
+    // let witness_generator_wasm = FileLocation::URL(format!("{}/{}.wasm", BASE_URL, FILE_NAME));
+    let witness_generator_wasm = FileLocation::URL(wasm_url);
 
     // deserialize the private input (membership inputs)
     let membership: Membership<DEFAULT_TREE_DEPTH> =
@@ -226,39 +231,44 @@ pub async fn continue_proof(
     )
     .await
     .unwrap();
-    
+
     // return the stringified proof
-    serde_json::to_string(&proof).unwrap()
+    return serde_json::to_string(&proof.clone()).unwrap();
 }
 
 #[wasm_bindgen]
 pub async fn compress_to_spartan(
     params_string: String,
     proving_key_string: String,
-    proof_string: String
+    proof_string: String,
 ) -> String {
     // deserialize the public params
-    console_log!("Deserializing");
     let params: Params = serde_json::from_str(&params_string).unwrap();
     // deserialize the proving key
-    let proving_key: ProverKey<G1, G2, C1<G1>, C2<G2>, S<G1>, S<G2>> = serde_json::from_str(&proving_key_string).unwrap();
+    let proving_key: ProverKey<G1, G2, C1<G1>, C2<G2>, S<G1>, S<G2>> =
+        serde_json::from_str(&proving_key_string).unwrap();
     // deserialize the proof
     let proof: NovaProof = serde_json::from_str(&proof_string).unwrap();
     // compress the proof
-    console_log!("Proving");
-    let compressed_proof = CompressedSNARK::<_, _, _, _, S<G1>, S<G2>>::prove(&params, &proving_key, &proof).unwrap();
+    let compressed_proof =
+        CompressedSNARK::<_, _, _, _, S<G1>, S<G2>>::prove(&params, &proving_key, &proof).unwrap();
     // return the stringified proof
-    console_log!("Proving successful");
     serde_json::to_string(&compressed_proof).unwrap()
 }
 
 #[wasm_bindgen]
-pub async fn verify_spartan(verifier_key_string: String, proof_string: String, iterations: Number) -> Array {
+pub async fn verify_spartan(
+    verifier_key_string: String,
+    proof_string: String,
+    iterations: Number,
+) -> Array {
     // deserialize the verifier key
-    let vk: VerifierKey<G1, G2, C1<G1>, C2<G2>, S<G1>, S<G2>> = serde_json::from_str(&verifier_key_string).unwrap();
+    let vk: VerifierKey<G1, G2, C1<G1>, C2<G2>, S<G1>, S<G2>> =
+        serde_json::from_str(&verifier_key_string).unwrap();
 
     // deserialize the proof
-    let proof: CompressedSNARK::<G1, G2, C1<G1>, C2<G2>, S<G1>, S<G2>> = serde_json::from_str(&proof_string).unwrap();
+    let proof: CompressedSNARK<G1, G2, C1<G1>, C2<G2>, S<G1>, S<G2>> =
+        serde_json::from_str(&proof_string).unwrap();
 
     // parse num steps
     let num_steps = iterations.as_f64().unwrap() as usize;
@@ -268,12 +278,10 @@ pub async fn verify_spartan(verifier_key_string: String, proof_string: String, i
     let z0_secondary = vec![Fq::from(0)];
 
     // verify the proof
-    let res = proof.verify(
-        &vk,
-        num_steps,
-        start_step_input,
-        z0_secondary
-    ).unwrap().0;
+    let res = proof
+        .verify(&vk, num_steps, start_step_input, z0_secondary)
+        .unwrap()
+        .0;
 
     // marshall results into js values
     let arr = Array::new_with_length(4);
@@ -287,8 +295,6 @@ pub async fn verify_spartan(verifier_key_string: String, proof_string: String, i
     arr
 }
 
-
-
 use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
@@ -297,7 +303,12 @@ async fn fold_3_test() {
 
     // note: uses same membership 5 times
 
+    // set urls
+    let r1cs_url = format!("{}/{}.r1cs", BASE_URL, FILE_NAME);
+    let wasm_url = format!("{}/{}.wasm", BASE_URL, FILE_NAME);
+
     // download public params
+
     let start = performance.now();
     let pp_str = get_pp_file().await;
     let end = performance.now();
@@ -315,7 +326,13 @@ async fn fold_3_test() {
 
     // compute proof 1
     let start = performance.now();
-    let proof: String = generate_proof(pp_str.clone(), membership_string.clone()).await;
+    let proof: String = generate_proof(
+        r1cs_url.clone(),
+        wasm_url.clone(),
+        pp_str.clone(),
+        membership_string.clone(),
+    )
+    .await;
     let end = performance.now();
     console_log!("Time to complete proof 1: {}ms", end - start);
 
@@ -327,7 +344,15 @@ async fn fold_3_test() {
 
     // compute proof 2
     let start = performance.now();
-    let proof: String = continue_proof(pp_str.clone(), proof, membership_string.clone(), zi_primary).await;
+    let proof: String = continue_proof(
+        r1cs_url.clone(),
+        wasm_url.clone(),
+        pp_str.clone(),
+        proof,
+        membership_string.clone(),
+        zi_primary,
+    )
+    .await;
     let end = performance.now();
     console_log!("Time to complete proof 2: {}ms", end - start);
 
@@ -339,7 +364,15 @@ async fn fold_3_test() {
 
     // compute proof 3
     let start = performance.now();
-    let proof: String = continue_proof(pp_str.clone(), proof, membership_string.clone(), zi_primary).await;
+    let proof: String = continue_proof(
+        r1cs_url.clone(),
+        wasm_url.clone(),
+        pp_str.clone(),
+        proof,
+        membership_string.clone(),
+        zi_primary,
+    )
+    .await;
     let end = performance.now();
     console_log!("Time to complete proof 3: {}ms", end - start);
 

@@ -3,6 +3,7 @@ pragma circom 2.1.2;
 include "./baby_jubjub_ecdsa.circom";
 include "./tree.circom";
 include "../node_modules/circomlib/circuits/poseidon.circom";
+include "../node_modules/circomlib/circuits/mux1.circom";
 
 /**
  *  PubkeyMembership
@@ -29,6 +30,7 @@ template PubKeyMembership(nLevels) {
     signal input siblings[nLevels];
     signal input sigNullifierRandomness;
     signal input pubKeyNullifierRandomness;
+    signal input chaff;
 
     signal output sigNullifier;
     signal output pubKeyNullifier;
@@ -53,7 +55,14 @@ template PubKeyMembership(nLevels) {
         merkleProof.siblings[i] <== siblings[i];
     }
 
-    root === merkleProof.root;
+    // mux the root of the merkle tree to see if it should be used
+    component rootChaff = Mux1();
+    rootChaff.a <== merkleProof.root;
+    rootChaff.b <== root;
+    rootChaff.s <== chaff;
+
+    // check the root of the merkle tree if chaff is false
+    root === rootChaff.out;
 
     // sigNullifier = hash(s, sigNullifierRandomness)
     component sigNullifierHash = Poseidon(2);
