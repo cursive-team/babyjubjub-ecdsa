@@ -19,6 +19,7 @@ import { areAllBigIntsDifferent, isNode } from "./utils";
  * Based on the Efficient ECDSA formulation: https://personaelabs.org/posts/efficient-ecdsa-1/
  * Does not maintain the list of usedSigNullifiers, this must be done by the caller
  * @param proof - The membership proof to verify
+ * @param merkleTreeDepth - The depth of the merkle tree used to store public keys
  * @param merkleRoot - Precomputed merkle root for the public key anonymity set
  * @param merkleRootArgs - Arguments to generate the merkle root. Only needed if merkle root is not precomputed
  * @param sigNullifierRandomness - Randomness used to generate signature nullifiers. Must be unique per application
@@ -29,6 +30,7 @@ import { areAllBigIntsDifferent, isNode } from "./utils";
  */
 export const verifyMembership = async ({
   proof,
+  merkleTreeDepth,
   merkleRoot,
   merkleRootArgs,
   sigNullifierRandomness,
@@ -56,7 +58,11 @@ export const verifyMembership = async ({
   } else {
     const { pubKeys, hashFn } = merkleRootArgs!;
     const edwardsPubKeys = pubKeys.map((pubKey) => pubKey.toEdwards());
-    resolvedMerkleRoot = await computeMerkleRoot(edwardsPubKeys, hashFn);
+    resolvedMerkleRoot = await computeMerkleRoot(
+      merkleTreeDepth,
+      edwardsPubKeys,
+      hashFn
+    );
   }
   if (resolvedMerkleRoot !== publicSignals.merkleRoot) {
     return { verified: false };
@@ -109,6 +115,7 @@ export const verifyMembership = async ({
  * Based on the Efficient ECDSA formulation: https://personaelabs.org/posts/efficient-ecdsa-1/
  * Does not maintain the list of usedSigNullifiers, this must be done by the caller
  * @param proofs - The membership proofs to verify
+ * @param merkleTreeDepth - The depth of the merkle tree used to store public keys
  * @param merkleRoot - Precomputed merkle root for the public key anonymity set
  * @param merkleRootArgs - Arguments to generate the merkle root. Only needed if merkle root is not precomputed
  * @param sigNullifierRandomness - Randomness used to generate signature nullifiers. Must be unique per application
@@ -119,6 +126,7 @@ export const verifyMembership = async ({
  */
 export const batchVerifyMembership = async ({
   proofs,
+  merkleTreeDepth,
   merkleRoot,
   merkleRootArgs,
   sigNullifierRandomness,
@@ -143,7 +151,11 @@ export const batchVerifyMembership = async ({
   } else {
     const { pubKeys, hashFn } = merkleRootArgs!;
     const edwardsPubKeys = pubKeys.map((pubKey) => pubKey.toEdwards());
-    resolvedMerkleRoot = await computeMerkleRoot(edwardsPubKeys, hashFn);
+    resolvedMerkleRoot = await computeMerkleRoot(
+      merkleTreeDepth,
+      edwardsPubKeys,
+      hashFn
+    );
   }
   enableTiming && console.timeEnd("Batch Merkle Root Computation");
 
@@ -151,6 +163,7 @@ export const batchVerifyMembership = async ({
     proofs.map(async (proof) => {
       return await verifyMembership({
         proof,
+        merkleTreeDepth,
         merkleRoot: resolvedMerkleRoot,
         sigNullifierRandomness,
         usedSigNullifiers,

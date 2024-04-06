@@ -81,6 +81,22 @@ export const deserializeMembershipProof = (
   return { R, msgHash, zkp };
 };
 
+export const computeMerkleZeros = async (depth: number): Promise<string[]> => {
+  const poseidon = await buildPoseidon();
+
+  let prev = "0";
+  const res = [prev];
+  for (let i = 0; i < depth; i++) {
+    const prevBigInt = BigInt(prev);
+    const nextRaw = poseidon([prevBigInt, prevBigInt]);
+    const next = hexToBigInt(poseidon.F.toString(nextRaw, 16)).toString();
+    res.push(next);
+    prev = next;
+  }
+
+  return res;
+};
+
 export const hexToBigInt = (hex: string): bigint => {
   return BigInt(`0x${hex}`);
 };

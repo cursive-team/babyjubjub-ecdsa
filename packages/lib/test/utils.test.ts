@@ -139,6 +139,7 @@ describe("signature and key parsing utilities", () => {
     const sigNullifierRandomness = BigInt(0);
     const pubKeyNullifierRandomness = BigInt(0);
     const msgHash = BigInt("0");
+    const merkleTreeDepth = 8;
     const sig = {
       r: hexToBigInt(
         "00EF7145470CEC0B683C629CBA8ED58110000FFE657366F7D5A91F2D149DD8B5"
@@ -151,6 +152,7 @@ describe("signature and key parsing utilities", () => {
     const proof = await proveMembership({
       sig,
       msgHash,
+      merkleTreeDepth,
       merkleProofArgs: {
         pubKeys: pubKeyPoints,
         index: 2,
