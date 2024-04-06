@@ -13,13 +13,13 @@ yarn &> /dev/null
 
 # Compile the circuits with necessary artifacts
 echo "Compiling baby-jubjub-ecdsa folded circuit..."
-circom ./baby-jubjub-ecdsa/folded.circom \
+circom ./bjj_ecdsa_batch_fold.circom \
     --r1cs --wasm --sym \
     --output ./artifacts \
-    --prime bn128 \
-    &> /dev/null
-mv ./artifacts/folded_js/folded.wasm ./artifacts/folded.wasm
-rm -rf ./artifacts/folded_js
+    --prime bn128 
+
+mv ./artifacts/bjj_ecdsa_batch_fold_js/bjj_ecdsa_batch_fold.wasm ./artifacts/bjj_ecdsa_batch_fold.wasm
+rm -rf ./artifacts/bjj_ecdsa_batch_fold_js
 
 # Generate the public parameters
 cd ..
@@ -45,5 +45,6 @@ case $OS in
 esac
 
 # cargo run --target x86_64-unknown-linux-gnu --bin  params_gen params ./circuits/artifacts/folded.r1cs ./circuits/artifacts/
-cargo run --target $RUST_TARGET --bin  params_gen params ./circuits/artifacts/folded.r1cs ./circuits/artifacts/
+cargo run --target $RUST_TARGET --bin  bjj_nova_params_gen chunked-params ./circuits/artifacts/bjj_ecdsa_batch_fold.r1cs ./circuits/artifacts/
+
 echo "Setup for baby-jubjub-ecdsa folded circuit complete!"
