@@ -5,12 +5,13 @@ use js_sys::{Array, Number, Uint8Array};
 use nova_scotia::{
     circom::reader::load_r1cs, continue_recursive_circuit, create_recursive_circuit, FileLocation,
 };
+use num::{Num, BigInt};
 use std::io::{Read, Write};
 use wasm_bindgen::prelude::*;
 
 /** Verify a proof */
 #[wasm_bindgen]
-pub async fn verify_proof(params_string: String, proof_string: String, num_steps: Number) -> Array {
+pub async fn verify_proof(params_string: String, proof_string: String, root: String, num_steps: Number) -> Array {
     // deserialize pp file
     let params: Params = serde_json::from_str(&params_string).unwrap();
 
@@ -20,8 +21,17 @@ pub async fn verify_proof(params_string: String, proof_string: String, num_steps
     // parse num steps
     let num_steps = num_steps.as_f64().unwrap() as usize;
 
+    // parse the root
+    let mut root_bytes = BigInt::from_str_radix(&root, 10).unwrap().to_bytes_le().1;
+    if root_bytes.len() < 32 {
+        let mut padded = vec![0; 32 - root_bytes.len()];
+        root_bytes.append(&mut padded);
+    }
+    let bytes: [u8; 32] = root_bytes.try_into().unwrap();
+    let root = Fr::from_repr(bytes).unwrap();
+
     // create z_0 values
-    let z0_primary = vec![Fr::from(0); 4];
+    let z0_primary = vec![root, Fr::from(0)];
     let z0_secondary = vec![Fq::from(0)];
     // verify proof
     let res = proof
@@ -73,8 +83,14 @@ pub async fn generate_proof(
     let private_inputs = membership.to_inputs();
 
     // decode root
-    let bytes: [u8; 32] = hex::decode(root).unwrap().try_into().unwrap();
+    let mut root_bytes = BigInt::from_str_radix(&root, 10).unwrap().to_bytes_le().1;
+    if root_bytes.len() < 32 {
+        let mut padded = vec![0; 32 - root_bytes.len()];
+        root_bytes.append(&mut padded);
+    }
+    let bytes: [u8; 32] = root_bytes.try_into().unwrap();
     let root = Fr::from_repr(bytes).unwrap();
+
     // define z0_primary
     let start_public_input = vec![root, Fr::from(0)];
 
@@ -180,6 +196,8 @@ pub async fn obfuscate_proof(
 
     // get a random private input to chaff the proof
     let private_inputs = vec![Membership::chaff()];
+
+    console_log!("Private inputs: {:?}", private_inputs);
 
     // deserialize the previous fold to build from
     let mut proof: NovaProof = serde_json::from_str(&proof_string).unwrap();

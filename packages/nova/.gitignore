@@ -1,6 +1,7 @@
 pk.json
 vk.json
-params.json
+params*.json
+public_params*.json
 pk/
 vk/
-params/
+params*/

@@ -55,4 +55,4 @@ template FoldedPubkeyMembership(depth, batchSize) {
     step_out[1] <== numVerified[batchSize];
 }
 
-component main { public[ step_in ]} = FoldedPubkeyMembership(9, 1);
+component main { public[ step_in ]} = FoldedPubkeyMembership(8, 1);
