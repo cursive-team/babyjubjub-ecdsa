@@ -38,3 +38,7 @@ yarn-error.log*
 
 # build
 build/
+
+# nova
+public_params.json
+target

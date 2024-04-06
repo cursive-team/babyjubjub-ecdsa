@@ -1,0 +1,33 @@
+[package]
+name = "bjj_ecdsa_nova_wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+ahash.workspace = true
+flate2.workspace = true
+nova-scotia.workspace = true
+nova-snark.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+console_error_panic_hook = "0.1.7"
+ff = { version = "0.13", features = ["derive"] }
+getrandom = { version = "0.2", features = ["js"]}
+hex = "0.4.3"
+js-sys = "0.3"
+rayon = "1.5"
+serde-wasm-bindgen = "0.6.4"
+wasm-bindgen = { version = "0.2.91", features = ["serde-serialize"]}
+wasm-bindgen-futures = "0.4"
+wasm-bindgen-rayon = { version = "1.0" }
+wasm-bindgen-test = "0.3.37"
+web-sys = { version = "0.3", features = ["Request", "Window", "Response"] }
+num = "0.4.1"
+
+[dev-dependencies]
+reqwest = { version = "0.12.3", features = ["json"] }

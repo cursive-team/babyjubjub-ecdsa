@@ -1,0 +1,10 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "./Cargo.toml",
+        "./crates/bjj-ecdsa-nova-wasm/Cargo.toml"
+    ],
+    "rust-analyzer.cargo.target": "wasm32-unknown-unknown",
+    "rust-analyzer.server.extraEnv": {
+        "CC": "/usr/bin/clang",
+    }
+}
