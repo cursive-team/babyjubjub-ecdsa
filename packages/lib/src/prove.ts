@@ -18,6 +18,7 @@ import { isNode } from "./utils";
  * @param msgHash - The hash of the message that was signed
  * @param publicInputs - Precomputed public inputs in Efficient ECDSA form
  * @param pubKey - The public key used to sign the signature. Only needed if public inputs and merkle proof are not precomputed
+ * @param merkleTreeDepth - The depth of the merkle tree used to store public keys
  * @param merkleProof - Precomputed merkle proof
  * @param merkleProofArgs - Arguments to generate the merkle proof. Only needed if merkle proof is not precomputed
  * @param sigNullifierRandomness - Must be random per application. Used to generate unique nullifiers for the signature
@@ -31,6 +32,7 @@ export const proveMembership = async ({
   msgHash,
   publicInputs,
   pubKey,
+  merkleTreeDepth,
   merkleProof,
   merkleProofArgs,
   sigNullifierRandomness,
@@ -42,6 +44,9 @@ export const proveMembership = async ({
     throw new Error(
       "Must provide either public inputs, merkle proof args, or public key!"
     );
+  }
+  if (!merkleTreeDepth) {
+    throw new Error("Must provide the merkle tree depth!");
   }
   if (!merkleProof && !merkleProofArgs) {
     throw new Error("Must provide either merkle proof or merkle proof args!");
@@ -71,6 +76,7 @@ export const proveMembership = async ({
       pubKeys.map(async (pubKey) => pubKey.toEdwards())
     );
     resolvedMerkleProof = await computeMerkleProof(
+      merkleTreeDepth,
       edwardsPubKeys,
       index,
       hashFn
@@ -109,6 +115,7 @@ export const proveMembership = async ({
  * @param msgHashes - The hash of the message that was signed
  * @param publicInputs - Precomputed public inputs in Efficient ECDSA form
  * @param pubKeys - The public key used to sign the signature. Only needed if public inputs and merkle proof are not precomputed
+ * @param merkleTreeDepth - The depth of the merkle tree used to store public keys
  * @param merkleProofs - Precomputed merkle proof
  * @param merkleProofArgs - Arguments to generate the merkle proof. Only needed if merkle proof is not precomputed
  * @param sigNullifierRandomness - Must be random per application. Used to generate unique nullifiers for the signature
@@ -122,6 +129,7 @@ export const batchProveMembership = async ({
   msgHashes,
   publicInputs,
   pubKeys,
+  merkleTreeDepth,
   merkleProofs,
   merkleProofArgs,
   sigNullifierRandomness,
@@ -133,6 +141,9 @@ export const batchProveMembership = async ({
     throw new Error(
       "Must provide either public inputs, merkle proof args, or public key!"
     );
+  }
+  if (!merkleTreeDepth) {
+    throw new Error("Must provide the merkle tree depth!");
   }
   if (!merkleProofs && !merkleProofArgs) {
     throw new Error("Must provide either merkle proof or merkle proof args!");
@@ -173,7 +184,12 @@ export const batchProveMembership = async ({
     );
     resolvedMerkleProofs = await Promise.all(
       indices.map(async (index) => {
-        return await computeMerkleProof(edwardsPubKeys, index, hashFn);
+        return await computeMerkleProof(
+          merkleTreeDepth,
+          edwardsPubKeys,
+          index,
+          hashFn
+        );
       })
     );
   }
@@ -186,6 +202,7 @@ export const batchProveMembership = async ({
         msgHash: msgHashes[i],
         publicInputs: publicInputs ? publicInputs[i] : undefined,
         pubKey: resolvedPubKeys ? resolvedPubKeys[i] : undefined,
+        merkleTreeDepth,
         merkleProof: resolvedMerkleProofs[i],
         sigNullifierRandomness,
         pubKeyNullifierRandomness,

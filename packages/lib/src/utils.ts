@@ -4,6 +4,15 @@ import { EdwardsPoint, WeierstrassPoint } from "./babyJubjub";
 import { MembershipProof, Signature } from "./types";
 
 /**
+ * Checks if a string is a hex string
+ * @param str - The string to check
+ * @returns Whether or not the string is a hex string
+ */
+export const isHexString = (str: string): boolean => {
+  return /^[0-9a-fA-F]+$/.test(str);
+};
+
+/**
  * DER decodes a signature
  * @param encodedSig - The encoded signature
  * @returns - The decoded signature
@@ -72,6 +81,22 @@ export const deserializeMembershipProof = (
   return { R, msgHash, zkp };
 };
 
+export const computeMerkleZeros = async (depth: number): Promise<string[]> => {
+  const poseidon = await buildPoseidon();
+
+  let prev = "0";
+  const res = [prev];
+  for (let i = 0; i < depth; i++) {
+    const prevBigInt = BigInt(prev);
+    const nextRaw = poseidon([prevBigInt, prevBigInt]);
+    const next = hexToBigInt(poseidon.F.toString(nextRaw, 16)).toString();
+    res.push(next);
+    prev = next;
+  }
+
+  return res;
+};
+
 export const hexToBigInt = (hex: string): bigint => {
   return BigInt(`0x${hex}`);
 };
@@ -104,6 +129,11 @@ export const bytesToBigInt = (bytes: Uint8Array): bigint => {
 
 export const bigIntToBytes = (bigInt: bigint): Uint8Array => {
   return hexToBytes(bigIntToHex(bigInt));
+};
+
+export const extendHexString = (hex: string, desiredLength: number): string => {
+  const zeros = "0".repeat(desiredLength - hex.length);
+  return zeros + hex;
 };
 
 export const areAllBigIntsTheSame = (bigInts: bigint[]): boolean => {

@@ -5,7 +5,7 @@ import { EdwardsPoint, WeierstrassPoint, babyjubjub } from "./babyJubjub";
 import { Signature, MerkleProof } from "./types";
 import { hashEdwardsPublicKey, hexToBigInt } from "./utils";
 
-export const MERKLE_TREE_DEPTH = 8; // We used a fixed depth merkle tree for now
+export const MAX_MERKLE_TREE_DEPTH = 30; // Limit on depth of merkle tree
 // Precomputed hashes of zero for each layer of the merkle tree
 export const MERKLE_TREE_ZEROS = [
   "0",
@@ -16,6 +16,29 @@ export const MERKLE_TREE_ZEROS = [
   "19712377064642672829441595136074946683621277828620209496774504837737984048981",
   "20775607673010627194014556968476266066927294572720319469184847051418138353016",
   "3396914609616007258851405644437304192397291162432396347162513310381425243293",
+  "21551820661461729022865262380882070649935529853313286572328683688269863701601",
+  "6573136701248752079028194407151022595060682063033565181951145966236778420039",
+  "12413880268183407374852357075976609371175688755676981206018884971008854919922",
+  "14271763308400718165336499097156975241954733520325982997864342600795471836726",
+  "20066985985293572387227381049700832219069292839614107140851619262827735677018",
+  "9394776414966240069580838672673694685292165040808226440647796406499139370960",
+  "11331146992410411304059858900317123658895005918277453009197229807340014528524",
+  "15819538789928229930262697811477882737253464456578333862691129291651619515538",
+  "19217088683336594659449020493828377907203207941212636669271704950158751593251",
+  "21035245323335827719745544373081896983162834604456827698288649288827293579666",
+  "6939770416153240137322503476966641397417391950902474480970945462551409848591",
+  "10941962436777715901943463195175331263348098796018438960955633645115732864202",
+  "15019797232609675441998260052101280400536945603062888308240081994073687793470",
+  "11702828337982203149177882813338547876343922920234831094975924378932809409969",
+  "11217067736778784455593535811108456786943573747466706329920902520905755780395",
+  "16072238744996205792852194127671441602062027943016727953216607508365787157389",
+  "17681057402012993898104192736393849603097507831571622013521167331642182653248",
+  "21694045479371014653083846597424257852691458318143380497809004364947786214945",
+  "8163447297445169709687354538480474434591144168767135863541048304198280615192",
+  "14081762237856300239452543304351251708585712948734528663957353575674639038357",
+  "16619959921569409661790279042024627172199214148318086837362003702249041851090",
+  "7022159125197495734384997711896547675021391130223237843255817587255104160365",
+  "4114686047564160449611603615418567457008101555090703535405891656262658644463",
 ];
 
 /**
@@ -23,31 +46,46 @@ export const MERKLE_TREE_ZEROS = [
  * Note that public keys must be in Twisted Edwards form
  * This is because we only ever use the Merkle Tree for in circuit verification,
  * and the circuit only ever uses Twisted Edwards points
+ * @param merkleTreeDepth - The depth of the merkle tree to generate the proof for
  * @param pubKeys - The list of public keys to compute the merkle root of in Twisted Edwards form
  * @param hashFn - The hash function to use for the merkle tree. Defaults to Poseidon
  * @returns - The merkle root
  */
 export const computeMerkleRoot = async (
+  merkleTreeDepth: number,
   pubKeys: EdwardsPoint[],
   hashFn?: any
 ): Promise<bigint> => {
-  const proof = await computeMerkleProof(pubKeys, 0, hashFn);
+  const proof = await computeMerkleProof(merkleTreeDepth, pubKeys, 0, hashFn);
   return proof.root;
 };
 
 /**
  * Generates a merkle proof for a given list of public keys and index
  * Once again, all public keys are represented in Twisted Edwards form
+ * @param merkleTreeDepth - The depth of the merkle tree to generate the proof for
  * @param pubKeys - The list of public keys to generate the merkle proof for in Twisted Edwards form
  * @param index - The index of the public key to generate the merkle proof for
  * @param hashFn - The hash function to use for the merkle tree. Defaults to Poseidon
  * @returns - The merkle proof
  */
 export const computeMerkleProof = async (
+  merkleTreeDepth: number,
   pubKeys: EdwardsPoint[],
   index: number,
   hashFn?: any
 ): Promise<MerkleProof> => {
+  // Merkle tree depth must be an integer between 1 and MAX_MERKLE_TREE_DEPTH
+  if (
+    !Number.isInteger(merkleTreeDepth) ||
+    merkleTreeDepth < 1 ||
+    merkleTreeDepth > MAX_MERKLE_TREE_DEPTH
+  ) {
+    throw new Error(
+      `merkleTreeDepth must be an integer between 1 and ${MAX_MERKLE_TREE_DEPTH}`
+    );
+  }
+
   // Building poseidon actually takes a while, so it's best if it is passed in for client side proving
   const poseidon = hashFn === undefined ? await buildPoseidon() : hashFn;
 
@@ -61,7 +99,7 @@ export const computeMerkleProof = async (
   let pathIndices: number[] = [];
   let siblings: bigint[] = [];
 
-  for (let i = 0; i < MERKLE_TREE_DEPTH; i++) {
+  for (let i = 0; i < merkleTreeDepth; i++) {
     pathIndices.push(index % 2);
     const siblingIndex = index % 2 === 0 ? index + 1 : index - 1;
     const sibling =

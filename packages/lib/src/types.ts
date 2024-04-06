@@ -56,6 +56,7 @@ export interface ProveArgs {
   msgHash: bigint;
   publicInputs?: PublicInputs;
   pubKey?: WeierstrassPoint;
+  merkleTreeDepth: number;
   merkleProof?: MerkleProof;
   merkleProofArgs?: MerkleProofArgs;
   sigNullifierRandomness: bigint;
@@ -70,6 +71,7 @@ export interface BatchProveArgs {
   msgHashes: bigint[];
   publicInputs?: PublicInputs[];
   pubKeys?: WeierstrassPoint[];
+  merkleTreeDepth: number;
   merkleProofs?: MerkleProof[];
   merkleProofArgs?: BatchMerkleProofArgs;
   sigNullifierRandomness: bigint;
@@ -81,6 +83,7 @@ export interface BatchProveArgs {
 // Arguments needed to verify a membership proof
 export interface VerifyArgs {
   proof: MembershipProof;
+  merkleTreeDepth: number;
   merkleRoot?: bigint;
   merkleRootArgs?: MerkleRootArgs;
   sigNullifierRandomness: bigint;
@@ -92,6 +95,7 @@ export interface VerifyArgs {
 // Arguments needed to batch verify membership proofs
 export interface BatchVerifyArgs {
   proofs: MembershipProof[];
+  merkleTreeDepth: number;
   merkleRoot?: bigint;
   merkleRootArgs?: MerkleRootArgs;
   sigNullifierRandomness: bigint;
