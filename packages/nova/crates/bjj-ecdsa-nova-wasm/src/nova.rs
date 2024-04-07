@@ -12,6 +12,8 @@ use wasm_bindgen::prelude::*;
 /** Verify a proof */
 #[wasm_bindgen]
 pub async fn verify_proof(params_string: String, proof_string: String, root: String, num_steps: Number) -> Array {
+    init_panic_hook();
+    console_log!("NovaWasm: Verifying proof...");
     // deserialize pp file
     let params: Params = serde_json::from_str(&params_string).unwrap();
 
@@ -46,7 +48,7 @@ pub async fn verify_proof(params_string: String, proof_string: String, root: Str
             JsValue::from_str(&hex::encode(item.to_bytes())),
         );
     }
-
+    console_log!("NovaWasm: Proof verification complete!");
     arr
 }
 
@@ -68,6 +70,7 @@ pub async fn generate_proof(
     membership_string: String,
 ) -> String {
     init_panic_hook();
+    console_log!("NovaWasm: Generating first membership proof...");
     // get r1cs
     // can't be deserialized without adding code upstream so download every time :/
     let r1cs = load_r1cs::<G1, G2>(&FileLocation::URL(r1cs_url)).await;
@@ -78,7 +81,6 @@ pub async fn generate_proof(
 
     // deserialize the private input (membership inputs)
     let membership: Membership = serde_json::from_str(&membership_string).unwrap();
-
     // format for circom
     let private_inputs = membership.to_inputs();
 
@@ -104,7 +106,7 @@ pub async fn generate_proof(
     )
     .await
     .unwrap();
-    console_log!("Success folding first membership!");
+    console_log!("NovaWasm: Success folding first membership!");
 
     // return the stringified proof
     return serde_json::to_string(&proof).unwrap();
@@ -129,6 +131,7 @@ pub async fn continue_proof(
     zi_primary: Array,
 ) -> String {
     init_panic_hook();
+    console_log!("NovaWasm: Continuing folding membership proof...");
     let r1cs = load_r1cs::<G1, G2>(&FileLocation::URL(r1cs_url)).await;
     // deserialize the public params
     let params: Params = serde_json::from_str(&params_string).unwrap();
@@ -148,7 +151,14 @@ pub async fn continue_proof(
     let mut zi_primary_vec: Vec<Fr> = vec![];
     for i in 0..2 {
         let value = zi_primary.get(i as u32).as_string().unwrap();
-        let bytes: [u8; 32] = hex::decode(value).unwrap().try_into().unwrap();
+        // convert to bigint
+        let mut bytes = BigInt::from_str_radix(&value, 10).unwrap().to_bytes_le().1;
+        // pad to 32 bytes
+        if bytes.len() < 32 {
+            let mut padded = vec![0; 32 - bytes.len()];
+            bytes.append(&mut padded);
+        }
+        let bytes: [u8; 32] = bytes.try_into().unwrap();
         zi_primary_vec.push(Fr::from_repr(bytes).unwrap());
     }
 
@@ -168,7 +178,7 @@ pub async fn continue_proof(
     .await
     .unwrap();
 
-    console_log!("Success continuing membership fold!");
+    console_log!("NovaWasm: Success folding membership proof!");
 
     // return the stringified proof
     return serde_json::to_string(&proof.clone()).unwrap();
@@ -186,7 +196,7 @@ pub async fn obfuscate_proof(
     zi_primary: Array,
 ) -> String {
     init_panic_hook();
-
+    console_log!("NovaWasm: Adding chaff via obfuscation fold...");
     // load the r1cs from remote source
     let r1cs = load_r1cs::<G1, G2>(&FileLocation::URL(r1cs_url)).await;
     // deserialize the public params
@@ -197,8 +207,6 @@ pub async fn obfuscate_proof(
     // get a random private input to chaff the proof
     let private_inputs = vec![Membership::chaff()];
 
-    console_log!("Private inputs: {:?}", private_inputs);
-
     // deserialize the previous fold to build from
     let mut proof: NovaProof = serde_json::from_str(&proof_string).unwrap();
 
@@ -206,7 +214,14 @@ pub async fn obfuscate_proof(
     let mut zi_primary_vec: Vec<Fr> = vec![];
     for i in 0..2 {
         let value = zi_primary.get(i as u32).as_string().unwrap();
-        let bytes: [u8; 32] = hex::decode(value).unwrap().try_into().unwrap();
+        // convert to bigint
+        let mut bytes = BigInt::from_str_radix(&value, 10).unwrap().to_bytes_le().1;
+        // pad to 32 bytes
+        if bytes.len() < 32 {
+            let mut padded = vec![0; 32 - bytes.len()];
+            bytes.append(&mut padded);
+        }
+        let bytes: [u8; 32] = bytes.try_into().unwrap();
         zi_primary_vec.push(Fr::from_repr(bytes).unwrap());
     }
 
@@ -226,7 +241,7 @@ pub async fn obfuscate_proof(
     .await
     .unwrap();
 
-    console_log!("Success adding chaff to membership fold!");
+    console_log!("NovaWasm: Success adding chaff to membership fold!");
 
     // return the stringified proof
     return serde_json::to_string(&proof.clone()).unwrap();
@@ -240,12 +255,15 @@ pub async fn obfuscate_proof(
  */
 #[wasm_bindgen]
 pub fn compress_proof(proof: String) -> Uint8Array {
+    init_panic_hook();
+    console_log!("NovaWasm: Compressing proof...");
     // compress proof string
     let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
     encoder.write_all(proof.as_bytes()).unwrap();
     // return compressed proof
     let compressed = encoder.finish().unwrap();
     // convert to js compatible u8array
+    console_log!("NovaWasm: Proof compressed!");
     Uint8Array::from(compressed.as_slice())
 }
 
@@ -257,6 +275,8 @@ pub fn compress_proof(proof: String) -> Uint8Array {
  */
 #[wasm_bindgen]
 pub fn decompress_proof(compressed: Uint8Array) -> String {
+    init_panic_hook();
+    console_log!("NovaWasm: Decompressing proof...");
     // convert the proof to a u8 slice
     let compressed_bytes = compressed.to_vec();
     // inflate the proof from compressed bytes
@@ -265,5 +285,6 @@ pub fn decompress_proof(compressed: Uint8Array) -> String {
     decoder.read_to_string(&mut proof).unwrap();
 
     // return stringified proof
+    console_log!("NovaWasm: Proof decompressed!");
     proof
 }
