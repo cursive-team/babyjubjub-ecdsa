@@ -32,16 +32,14 @@ pub async fn verify_proof(params_string: String, proof_string: String, root: Str
     let bytes: [u8; 32] = root_bytes.try_into().unwrap();
     let root = Fr::from_repr(bytes).unwrap();
 
-    // create z_0 values
+    // create z0 primary and secondary
     let z0_primary = vec![root, Fr::from(0)];
     let z0_secondary = vec![Fq::from(0)];
     // verify proof
     let res = proof
-        .verify(&params, num_steps, &z0_primary, &z0_secondary)
-        .unwrap()
-        .0;
+        .verify(&params, num_steps, &z0_primary, &z0_secondary).unwrap().0;
     // marshall results into js values
-    let arr = Array::new_with_length(4);
+    let arr = Array::new_with_length(2);
     for (index, item) in res.into_iter().enumerate() {
         arr.set(
             index as u32,
@@ -206,7 +204,7 @@ pub async fn obfuscate_proof(
 
     // get a random private input to chaff the proof
     let private_inputs = vec![Membership::chaff()];
-
+    
     // deserialize the previous fold to build from
     let mut proof: NovaProof = serde_json::from_str(&proof_string).unwrap();
 

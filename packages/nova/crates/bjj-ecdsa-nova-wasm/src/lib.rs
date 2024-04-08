@@ -13,7 +13,7 @@ pub type Fq = F<G2>;
 pub type Params = PublicParams<G1, G2, C1<G1>, C2<G2>>;
 pub type NovaProof = RecursiveSNARK<G1, G2, CircomCircuit<Fr>, TrivialTestCircuit<Fq>>;
 
-pub const DEFAULT_TREE_DEPTH: usize = 8;
+pub const DEFAULT_TREE_DEPTH: usize = 9;
 
 pub use wasm_bindgen_rayon::init_thread_pool;
 
