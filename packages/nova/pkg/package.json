@@ -1,0 +1,15 @@
+{
+  "name": "bjj_ecdsa_nova_wasm",
+  "version": "0.1.0",
+  "license": "MIT or Apache-2.0",
+  "files": [
+    "bjj_ecdsa_nova_wasm_bg.wasm",
+    "bjj_ecdsa_nova_wasm.js",
+    "bjj_ecdsa_nova_wasm.d.ts"
+  ],
+  "module": "bjj_ecdsa_nova_wasm.js",
+  "types": "bjj_ecdsa_nova_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
