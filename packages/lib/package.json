@@ -5,6 +5,7 @@
   "license": "MIT",
   "dependencies": {
     "@types/uuid": "^9.0.5",
+    "@zk-kit/eddsa-poseidon": "^1.1.0",
     "circomlibjs": "^0.1.7",
     "elliptic": "^6.5.4",
     "js-sha256": "^0.11.0",
