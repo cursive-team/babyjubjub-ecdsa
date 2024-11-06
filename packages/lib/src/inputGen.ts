@@ -148,6 +148,7 @@ export const getPublicInputsFromSignature = (
   // Because the cofactor is > 1, we must check multiple points
   // See public key recovery algorithm: https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm
   for (let i = 0; i < babyjubjub.cofactor; i++) {
+    console.log(i);
     for (const parity of [0, 1]) {
       const r = Fb.add(sig.r, Fb.mul(BigInt(i), Fs.p));
       const rInv = Fs.inv(r);
