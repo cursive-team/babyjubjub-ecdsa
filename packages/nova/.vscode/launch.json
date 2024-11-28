@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in <executable file>",
+            "program": "${workspaceFolder}/<executable file>",
+            "args": ["--test-threads=1"], // run tests incrementally rather than in parallel
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
